@@ -3,8 +3,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
+
+if __package__ is None or __package__ == "":
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from blaze_bot.config.settings import Settings
 from blaze_bot.core.backtest import run_backtest
