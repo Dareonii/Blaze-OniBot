@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict
 
 import websockets
+
+logger = logging.getLogger(__name__)
 
 
 class BlazeDoubleWebSocket:
@@ -16,13 +19,21 @@ class BlazeDoubleWebSocket:
         backoff = 1
         while True:
             try:
+                logger.info("Iniciando conexão com o WebSocket: %s", self.url)
                 async with websockets.connect(self.url, ping_interval=20, ping_timeout=20) as socket:
+                    logger.info("Conexão WebSocket estabelecida com sucesso.")
                     backoff = 1
                     async for message in socket:
                         parsed = self._parse_message(message)
                         if parsed:
                             yield parsed
-            except (OSError, websockets.WebSocketException):
+                    logger.warning("Conexão WebSocket encerrada.")
+            except (OSError, websockets.WebSocketException) as exc:
+                logger.warning(
+                    "Falha ao conectar/manter o WebSocket. Nova tentativa em %ss. Motivo: %s",
+                    backoff,
+                    exc,
+                )
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
@@ -84,6 +85,10 @@ def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
     settings = Settings.from_env()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
 
     if args.backtest_file:
         history = load_history(args.backtest_file)
