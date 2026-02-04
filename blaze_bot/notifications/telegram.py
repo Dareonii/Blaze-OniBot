@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
 
 
 class TelegramNotifier:
-    def __init__(self, token: str, chat_id: str) -> None:
+    def __init__(self, token: str, chat_id: str, game_label: str) -> None:
         self.token = token
         self.chat_id = chat_id
+        self.game_label = game_label
 
     def send_message(self, text: str) -> None:
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
@@ -34,29 +35,61 @@ class TelegramNotifier:
 
     def prediction(self, prediction: Dict[str, Any]) -> None:
         color = prediction.get("color", "-")
-        strategy = prediction.get("strategy")
-        suffix = f" ({strategy})" if strategy else ""
-        self.send_message(f"🎯 Blaze Double\nEntrada: {color}{suffix}")
+        strategy = prediction.get("strategy") or "-"
+        reason = prediction.get("reason")
+        label, emoji = _format_color(color)
+        lines = [
+            "⚠️ SINAL DETECTADO!",
+            f"🎲 {self.game_label}",
+            f"🤖 {strategy}",
+            f"🎯: {label} {emoji}".strip(),
+        ]
+        if reason:
+            lines.append(f"✳️: {reason}")
+        self.send_message("\n".join(lines))
 
     def evaluation(
         self,
         win: bool,
         result: Dict[str, Any],
         winrate: float,
+        stats: Dict[str, Any],
         *,
         strategy_name: str | None = None,
         min_winrate: float | None = None,
         max_winrate: float | None = None,
     ) -> None:
-        status = "✅" if win else "❌"
-        strategy_suffix = f" ({strategy_name})" if strategy_name else ""
+        status = "✅️ WIN" if win else "❌️ LOSS"
+        strategy_label = strategy_name or "-"
         limits = ""
-        if min_winrate is not None and max_winrate is not None and strategy_name:
-            limits = f"\nWinrate alvo: {min_winrate:.2f}% - {max_winrate:.2f}%"
-        message = (
-            "🎯 Blaze Double\n"
-            f"Resultado: {result['color']} ({result['number']}) {status}{strategy_suffix}\n"
-            f"Winrate atual: {winrate:.2f}%"
-            f"{limits}"
+        if min_winrate is not None and max_winrate is not None:
+            limits = f"({min_winrate:.2f}% - {max_winrate:.2f}%)"
+        summary = (
+            "📊 Entradas: {entries} | Wins: {wins} | Losses: {losses} | "
+            "Winrate: {winrate:.2f}%{limits}".format(
+                entries=stats["entries"],
+                wins=stats["wins"],
+                losses=stats["losses"],
+                winrate=winrate,
+                limits=limits,
+            )
+        )
+        message = "\n".join(
+            [
+                status,
+                f"🎲 {self.game_label}",
+                f"🤖 {strategy_label}",
+                summary,
+            ]
         )
         self.send_message(message)
+
+
+def _format_color(color: Any) -> tuple[str, str]:
+    normalized = str(color).lower()
+    mapping = {
+        "red": ("VERMELHO", "🔴"),
+        "black": ("PRETO", "⚫️"),
+        "white": ("BRANCO", "⚪️"),
+    }
+    return mapping.get(normalized, (str(color).upper(), ""))

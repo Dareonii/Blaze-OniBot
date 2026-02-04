@@ -38,10 +38,12 @@ def load_history(path: Path) -> List[Dict[str, Any]]:
     return [json.loads(line) for line in raw.splitlines() if line.strip()]
 
 
-def build_notifiers(settings: Settings) -> list[Any]:
+def build_notifiers(settings: Settings, game_label: str) -> list[Any]:
     notifiers: list[Any] = [TerminalNotifier()]
     if settings.telegram_token and settings.telegram_chat_id:
-        notifiers.append(TelegramNotifier(settings.telegram_token, settings.telegram_chat_id))
+        notifiers.append(
+            TelegramNotifier(settings.telegram_token, settings.telegram_chat_id, game_label)
+        )
     return notifiers
 
 
@@ -84,7 +86,7 @@ def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
 
 def run_live(settings: Settings, sessions: Iterable[GameSession]) -> None:
     async def _run_game(session: GameSession) -> None:
-        notifiers = build_notifiers(settings)
+        notifiers = build_notifiers(settings, session.game.label)
         engine = Engine(strategy=session.strategy, notifiers=notifiers)
         backtest_path = create_backtest_path(session.game.key)
         print(f"[BACKTEST] Gravando resultados em {backtest_path}")
