@@ -55,11 +55,17 @@ class Engine:
                 strategy_stats.register_result(win)
                 for notifier in self.notifiers:
                     if hasattr(notifier, "evaluation"):
-                        min_winrate, max_winrate = prediction_state.strategy.winrate_limits()
+                        min_winrate = strategy_stats.min_winrate
+                        max_winrate = strategy_stats.max_winrate
                         notifier.evaluation(
                             win,
                             result,
                             strategy_stats.winrate,
+                            {
+                                "entries": strategy_stats.total_entries,
+                                "wins": strategy_stats.wins,
+                                "losses": strategy_stats.losses,
+                            },
                             strategy_name=strategy_name,
                             min_winrate=min_winrate,
                             max_winrate=max_winrate,
@@ -74,8 +80,8 @@ class Engine:
                                 "losses": strategy_stats.losses,
                             },
                             strategy_name=strategy_name,
-                            min_winrate=min_winrate,
-                            max_winrate=max_winrate,
+                            min_winrate=strategy_stats.min_winrate,
+                            max_winrate=strategy_stats.max_winrate,
                         )
             for notifier in self.notifiers:
                 if hasattr(notifier, "stats"):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 class TerminalNotifier:
@@ -21,6 +21,7 @@ class TerminalNotifier:
         win: bool,
         result: Dict[str, Any] | None = None,
         winrate: float | None = None,
+        stats: Dict[str, Any] | None = None,
         *,
         strategy_name: str | None = None,
         min_winrate: float | None = None,
@@ -28,11 +29,21 @@ class TerminalNotifier:
     ) -> None:
         label = "WIN ✅" if win else "LOSS ❌"
         suffix = f"({strategy_name})" if strategy_name else ""
-        if min_winrate is not None and max_winrate is not None and winrate is not None:
-            limits = f" | Winrate: {winrate:.2f}% (mín: {min_winrate:.2f}% | máx: {max_winrate:.2f}%)"
-        else:
+        stats_summary = ""
+        if stats and winrate is not None:
             limits = ""
-        print(f"[RESULT] {label}{suffix}{limits}")
+            if min_winrate is not None and max_winrate is not None:
+                limits = f" (mín: {min_winrate:.2f}% | máx: {max_winrate:.2f}%)"
+            stats_summary = (
+                " Entradas: {entries} | Wins: {wins} | Loss: {losses} | Winrate: {winrate:.2f}%{limits}".format(
+                    entries=stats["entries"],
+                    wins=stats["wins"],
+                    losses=stats["losses"],
+                    winrate=winrate,
+                    limits=limits,
+                )
+            )
+        print(f"[RESULT] {label}{suffix}{stats_summary}")
 
     def stats(
         self,
