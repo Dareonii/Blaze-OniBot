@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from blaze_bot.strategies.base import StrategyBase
 
 
-STRATEGY_NAME = "Tendência Daniels"
+STRATEGY_NAME = "supremacia"
 
 
 class Strategy(StrategyBase):

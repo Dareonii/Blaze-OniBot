@@ -39,13 +39,13 @@ class TelegramNotifier:
         reason = prediction.get("reason")
         label, emoji = _format_color(color)
         lines = [
-            "⚠️ SINAL DETECTADO!",
-            f"🎲 {self.game_label}",
-            f"🤖 {strategy}",
-            f"🎯: {label} {emoji}".strip(),
+            "**⚠️ SINAL DETECTADO!**",
+            f"**🎲 Modo:** {self.game_label}",
+            f"**🤖 Estratégia:** {strategy}",
+            f"**🎯 Sinal:** {label} {emoji}".strip(),
         ]
         if reason:
-            lines.append(f"✳️: {reason}")
+            lines.append(f"✳️ Motivo: {reason}")
         self.send_message("\n".join(lines))
 
     def evaluation(
