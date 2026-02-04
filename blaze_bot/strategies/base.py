@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import sys
 from typing import Any, Dict, List, Optional
 
 
@@ -8,7 +9,11 @@ class StrategyBase(ABC):
     STRATEGY_NAME = ""
 
     def strategy_name(self) -> str:
-        return self.STRATEGY_NAME or self.__class__.__name__
+        if self.STRATEGY_NAME:
+            return self.STRATEGY_NAME
+        module = sys.modules.get(self.__class__.__module__)
+        module_strategy_name = getattr(module, "STRATEGY_NAME", "") if module else ""
+        return module_strategy_name or self.__class__.__name__
 
     @abstractmethod
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:

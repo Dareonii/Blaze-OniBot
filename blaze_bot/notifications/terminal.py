@@ -24,7 +24,7 @@ class TerminalNotifier:
         *,
         strategy_name: str | None = None,
     ) -> None:
-        label = "WIN" if win else "LOSS"
+        label = "WIN ✅" if win else "LOSS ❌"
         suffix = f"({strategy_name})" if strategy_name else ""
         print(f"[RESULT] {label}{suffix}")
 
