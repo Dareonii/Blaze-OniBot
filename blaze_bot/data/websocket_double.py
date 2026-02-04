@@ -2,27 +2,39 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict
 
 import websockets
 
+logger = logging.getLogger(__name__)
+
 
 class BlazeDoubleWebSocket:
     def __init__(self, url: str) -> None:
         self.url = url
+        self._last_status: str | None = None
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
         backoff = 1
         while True:
             try:
+                logger.info("Iniciando conexão com o WebSocket: %s", self.url)
                 async with websockets.connect(self.url, ping_interval=20, ping_timeout=20) as socket:
+                    logger.info("Conexão WebSocket estabelecida com sucesso.")
                     backoff = 1
                     async for message in socket:
                         parsed = self._parse_message(message)
                         if parsed:
                             yield parsed
-            except (OSError, websockets.WebSocketException):
+                    logger.warning("Conexão WebSocket encerrada.")
+            except (OSError, websockets.WebSocketException) as exc:
+                logger.warning(
+                    "Falha ao conectar/manter o WebSocket. Nova tentativa em %ss. Motivo: %s",
+                    backoff,
+                    exc,
+                )
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30)
 
@@ -44,6 +56,10 @@ class BlazeDoubleWebSocket:
             data = data["payload"]
 
         if isinstance(data, dict):
+            status = data.get("status")
+            if isinstance(status, str) and status != self._last_status:
+                logger.info("Status do double: %s", status)
+                self._last_status = status
             color = data.get("color") or data.get("colour")
             number = data.get("roll") or data.get("number")
             timestamp = data.get("created_at") or data.get("timestamp")
@@ -53,6 +69,8 @@ class BlazeDoubleWebSocket:
             timestamp = payload.get("created_at") if isinstance(payload, dict) else None
 
         if color is None or number is None:
+            if isinstance(data, dict) and data.get("status") == "waiting":
+                logger.info("Roleta aguardando próxima rodada (sem número ainda).")
             return None
 
         if timestamp is None:
