@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 
 class StrategyBase(ABC):
@@ -20,8 +20,10 @@ class StrategyBase(ABC):
         """Recebe histórico e retorna decisão."""
 
     @abstractmethod
-    def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        """Retorna predição: cor/número."""
+    def predict(
+        self, history: List[Dict[str, Any]]
+    ) -> Optional[Union[Dict[str, Any], Sequence[Dict[str, Any]]]]:
+        """Retorna predição: cor/número ou lista de predições."""
 
     @abstractmethod
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
@@ -33,13 +35,7 @@ class MultiStrategy(StrategyBase):
         if not strategies:
             raise ValueError("Nenhuma estratégia informada.")
         self._strategies = strategies
-        self._next_index = 0
         self._last_strategy: Optional[StrategyBase] = None
-
-    def strategy_name(self) -> str:
-        if self._last_strategy is None:
-            return "MultiStrategy"
-        return self._last_strategy.strategy_name()
 
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         analysis: Dict[str, Any] = {}
@@ -47,11 +43,36 @@ class MultiStrategy(StrategyBase):
             analysis.update(strategy.analyze(history))
         return analysis
 
-    def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        strategy = self._strategies[self._next_index]
-        self._next_index = (self._next_index + 1) % len(self._strategies)
-        self._last_strategy = strategy
-        return strategy.predict(history)
+    def predict(
+        self, history: List[Dict[str, Any]]
+    ) -> Optional[Union[Dict[str, Any], Sequence[Dict[str, Any]]]]:
+        predictions: List[Dict[str, Any]] = []
+        for strategy, prediction in self._predictions_with_strategies(history):
+            self._last_strategy = strategy
+            predictions.append(prediction)
+        return predictions or None
+
+    def predictions_with_strategies(
+        self, history: List[Dict[str, Any]]
+    ) -> List[Tuple[StrategyBase, Dict[str, Any]]]:
+        return self._predictions_with_strategies(history)
+
+    def _predictions_with_strategies(
+        self, history: List[Dict[str, Any]]
+    ) -> List[Tuple[StrategyBase, Dict[str, Any]]]:
+        predictions: List[Tuple[StrategyBase, Dict[str, Any]]] = []
+        for strategy in self._strategies:
+            self._last_strategy = strategy
+            prediction = strategy.predict(history)
+            if prediction is None:
+                continue
+            if isinstance(prediction, dict):
+                predictions.append((strategy, prediction))
+            else:
+                predictions.extend(
+                    [(strategy, item) for item in prediction if isinstance(item, dict)]
+                )
+        return predictions
 
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
         if self._last_strategy is None:
