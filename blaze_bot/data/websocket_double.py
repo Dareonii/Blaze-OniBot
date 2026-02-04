@@ -19,6 +19,8 @@ class BlazeDoubleWebSocket:
         token: str | None = None,
         room: str | None = "double_room_1",
         namespace: str = "",
+        reconnect_backoff_initial: float = 1.0,
+        reconnect_backoff_max: float = 10.0,
     ) -> None:
         self.url = url
         self.token = token
@@ -26,16 +28,18 @@ class BlazeDoubleWebSocket:
         self._last_status: str | None = None
         self._last_result_signature: tuple[Any, ...] | None = None
         self._namespace = namespace
+        self._reconnect_backoff_initial = reconnect_backoff_initial
+        self._reconnect_backoff_max = reconnect_backoff_max
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
-        backoff = 1
+        backoff = self._reconnect_backoff_initial
         while True:
             try:
                 logger.info("Iniciando conexão com o WebSocket: %s", self.url)
                 async with websockets.connect(self.url, ping_interval=None, ping_timeout=None) as socket:
                     logger.info("Conexão WebSocket estabelecida com sucesso.")
                     await self._send_connect(socket)
-                    backoff = 1
+                    backoff = self._reconnect_backoff_initial
                     async for message in socket:
                         if await self._handle_control_message(socket, message):
                             continue
@@ -50,7 +54,7 @@ class BlazeDoubleWebSocket:
                     exc,
                 )
                 await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 30)
+                backoff = min(backoff * 2, self._reconnect_backoff_max)
 
     async def _send_connect(self, socket: websockets.WebSocketClientProtocol) -> None:
         """Envia o comando de conexão do Socket.IO (Engine.IO v3)."""

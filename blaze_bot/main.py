@@ -68,15 +68,21 @@ def run_live(settings: Settings) -> None:
             settings.websocket_url,
             token=settings.websocket_token,
             room=settings.websocket_room,
+            reconnect_backoff_initial=settings.websocket_reconnect_backoff_initial,
+            reconnect_backoff_max=settings.websocket_reconnect_backoff_max,
         )
         stream = socket.listen()
         while True:
             try:
-                result = await asyncio.wait_for(stream.__anext__(), timeout=60)
+                result = await asyncio.wait_for(
+                    stream.__anext__(), timeout=settings.websocket_result_timeout
+                )
             except asyncio.TimeoutError:
                 for notifier in notifiers:
                     if hasattr(notifier, "warning"):
-                        notifier.warning("Nenhum novo resultado recebido após 60s.")
+                        notifier.warning(
+                            f"Nenhum novo resultado recebido após {settings.websocket_result_timeout:.0f}s."
+                        )
                 continue
             except StopAsyncIteration:
                 break
