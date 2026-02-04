@@ -5,7 +5,6 @@ import json
 import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict
-from urllib.parse import urlparse
 
 import websockets
 
@@ -13,11 +12,19 @@ logger = logging.getLogger(__name__)
 
 
 class BlazeDoubleWebSocket:
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        token: str | None = None,
+        room: str | None = "double_room_1",
+        namespace: str = "",
+    ) -> None:
         self.url = url
+        self.token = token
+        self.room = room
         self._last_status: str | None = None
-        parsed = urlparse(url)
-        self._namespace = parsed.path if parsed.path and parsed.path != "/" else ""
+        self._namespace = namespace
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
         backoff = 1
@@ -67,6 +74,7 @@ class BlazeDoubleWebSocket:
                 ping_timeout,
             )
             await self._send_connect(socket)
+            await self._send_initial_messages(socket)
             return True
         if message == "2":
             logger.debug("Ping Engine.IO recebido, enviando pong.")
@@ -76,6 +84,24 @@ class BlazeDoubleWebSocket:
             logger.debug("Mensagem Engine.IO ignorada: %s", message)
             return True
         return False
+
+    async def _send_initial_messages(self, socket: websockets.WebSocketClientProtocol) -> None:
+        if self.token:
+            await self._send_cmd(socket, {"id": "authenticate", "payload": {"token": self.token}})
+            logger.info("Comando de autenticação enviado.")
+        if self.room:
+            await self._send_cmd(socket, {"id": "subscribe", "payload": {"room": self.room}})
+            logger.info("Inscrição enviada para a sala %s.", self.room)
+
+    async def _send_cmd(
+        self, socket: websockets.WebSocketClientProtocol, payload: Dict[str, Any]
+    ) -> None:
+        message = json.dumps(["cmd", payload], separators=(",", ":"))
+        if self._namespace:
+            namespace = self._namespace if self._namespace.startswith("/") else f"/{self._namespace}"
+            await socket.send(f"42{namespace},{message}")
+        else:
+            await socket.send(f"42{message}")
 
     def _parse_message(self, message: str) -> Dict[str, Any] | None:
         if message.startswith("42"):

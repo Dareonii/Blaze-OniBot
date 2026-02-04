@@ -24,6 +24,8 @@ blaze_bot/
 Variáveis de ambiente suportadas:
 
 - `BLAZE_DOUBLE_WS`: URL do WebSocket da Blaze Double.
+- `BLAZE_DOUBLE_TOKEN`: token JWT usado para autenticar no socket (quando necessário).
+- `BLAZE_DOUBLE_ROOM`: sala para inscrição no Socket.IO (padrão: `double_room_1`).
 - `TELEGRAM_BOT_TOKEN`: token do bot.
 - `TELEGRAM_CHAT_ID`: chat ID para envio de mensagens.
 

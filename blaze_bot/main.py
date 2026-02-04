@@ -64,7 +64,11 @@ def run_live(settings: Settings) -> None:
         strategy = DummyAlternatingStrategy()
         notifiers = build_notifiers(settings)
         engine = Engine(strategy=strategy, notifiers=notifiers)
-        socket = BlazeDoubleWebSocket(settings.websocket_url)
+        socket = BlazeDoubleWebSocket(
+            settings.websocket_url,
+            token=settings.websocket_token,
+            room=settings.websocket_room,
+        )
         stream = socket.listen()
         while True:
             try:
