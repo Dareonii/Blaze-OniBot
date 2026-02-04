@@ -21,11 +21,19 @@ class TelegramNotifier:
         suffix = f" ({strategy})" if strategy else ""
         self.send_message(f"🎯 Blaze Double\nEntrada: {color}{suffix}")
 
-    def evaluation(self, win: bool, result: Dict[str, Any], winrate: float) -> None:
+    def evaluation(
+        self,
+        win: bool,
+        result: Dict[str, Any],
+        winrate: float,
+        *,
+        strategy_name: str | None = None,
+    ) -> None:
         status = "✅" if win else "❌"
+        strategy_suffix = f" ({strategy_name})" if strategy_name else ""
         message = (
             "🎯 Blaze Double\n"
-            f"Resultado: {result['color']} ({result['number']}) {status}\n"
+            f"Resultado: {result['color']} ({result['number']}) {status}{strategy_suffix}\n"
             f"Winrate atual: {winrate:.2f}%"
         )
         self.send_message(message)

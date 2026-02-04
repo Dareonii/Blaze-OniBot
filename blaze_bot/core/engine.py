@@ -28,13 +28,23 @@ class Engine:
                 notifier.result(result)
 
         if self.last_prediction is not None:
+            strategy_name = self.last_prediction.strategy_name
             win = self.strategy.validate(self.last_prediction.prediction, result)
             self.stats.register_result(win)
             for notifier in self.notifiers:
                 if hasattr(notifier, "evaluation"):
-                    notifier.evaluation(win, result, self.stats.winrate)
+                    notifier.evaluation(win, result, self.stats.winrate, strategy_name=strategy_name)
             for notifier in self.notifiers:
                 if hasattr(notifier, "stats"):
+                    notifier.stats(
+                        self.stats.winrate,
+                        {
+                            "entries": self.stats.total_entries,
+                            "wins": self.stats.wins,
+                            "losses": self.stats.losses,
+                        },
+                        strategy_name=strategy_name,
+                    )
                     notifier.stats(
                         self.stats.winrate,
                         {
