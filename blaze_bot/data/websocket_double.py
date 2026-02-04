@@ -77,6 +77,8 @@ class BlazeDoubleWebSocket:
             timestamp = payload.get("created_at") if isinstance(payload, dict) else None
 
         if color is None or number is None:
+            if isinstance(data, dict) and data.get("status") == "waiting":
+                logger.info("Roleta aguardando próxima rodada (sem número ainda).")
             return None
 
         if timestamp is None:
