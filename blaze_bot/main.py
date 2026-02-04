@@ -5,6 +5,8 @@ import asyncio
 import json
 import logging
 import sys
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
@@ -14,10 +16,17 @@ if __package__ is None or __package__ == "":
 from blaze_bot.config.settings import Settings
 from blaze_bot.core.backtest import run_backtest
 from blaze_bot.core.engine import Engine
-from blaze_bot.data.websocket_double import BlazeDoubleWebSocket
+from blaze_bot.games import GameConfig, available_games
+from blaze_bot.games.strategies import available_strategies, build_strategy
+from blaze_bot.strategies.base import MultiStrategy
 from blaze_bot.notifications.terminal import TerminalNotifier
 from blaze_bot.notifications.telegram import TelegramNotifier
-from blaze_bot.strategies import available_strategies, build_strategy
+
+
+@dataclass(frozen=True)
+class GameSession:
+    game: GameConfig
+    strategy: Any
 
 
 def load_history(path: Path) -> List[Dict[str, Any]]:
@@ -58,56 +67,95 @@ def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
     )
     per_strategy = results.get("per_strategy", {})
     for name, stats in per_strategy.items():
+        min_winrate, max_winrate = _winrate_limits_for(strategy, name)
         print(
-            "[BACKTEST:{name}] Entradas: {entries} | Wins: {wins} | Losses: {losses} | Winrate: {winrate:.2f}%".format(
+            "[BACKTEST:{name}] Entradas: {entries} | Wins: {wins} | Losses: {losses} | "
+            "Winrate: {winrate:.2f}% (mín: {min_winrate:.2f}% | máx: {max_winrate:.2f}%)".format(
                 name=name,
                 entries=stats["entries"],
                 wins=stats["wins"],
                 losses=stats["losses"],
                 winrate=stats["winrate"],
+                min_winrate=min_winrate,
+                max_winrate=max_winrate,
             )
         )
 
 
-def run_live(settings: Settings, strategy: Any) -> None:
-    async def _run() -> None:
+def run_live(settings: Settings, sessions: Iterable[GameSession]) -> None:
+    async def _run_game(session: GameSession) -> None:
         notifiers = build_notifiers(settings)
-        engine = Engine(strategy=strategy, notifiers=notifiers)
-        socket = BlazeDoubleWebSocket(
-            settings.websocket_url,
-            token=settings.websocket_token,
-            room=settings.websocket_room,
-            reconnect_backoff_initial=settings.websocket_reconnect_backoff_initial,
-            reconnect_backoff_max=settings.websocket_reconnect_backoff_max,
-        )
+        engine = Engine(strategy=session.strategy, notifiers=notifiers)
+        backtest_path = create_backtest_path(session.game.key)
+        print(f"[BACKTEST] Gravando resultados em {backtest_path}")
+        socket = session.game.socket_builder(settings)
         stream = socket.listen()
-        while True:
-            try:
-                result = await asyncio.wait_for(
-                    stream.__anext__(), timeout=settings.websocket_result_timeout
-                )
-            except asyncio.TimeoutError:
-                for notifier in notifiers:
-                    if hasattr(notifier, "warning"):
-                        notifier.warning(
-                            f"Nenhum novo resultado recebido após {settings.websocket_result_timeout:.0f}s."
-                        )
-                continue
-            except StopAsyncIteration:
-                break
-            engine.process_result(result)
+        with backtest_path.open("a", encoding="utf-8") as backtest_file:
+            while True:
+                try:
+                    result = await asyncio.wait_for(
+                        stream.__anext__(), timeout=settings.websocket_result_timeout
+                    )
+                except asyncio.TimeoutError:
+                    for notifier in notifiers:
+                        if hasattr(notifier, "warning"):
+                            notifier.warning(
+                                f"Nenhum novo resultado recebido após {settings.websocket_result_timeout:.0f}s."
+                            )
+                    continue
+                except StopAsyncIteration:
+                    break
+                backtest_file.write(json.dumps(result, ensure_ascii=False) + "\n")
+                backtest_file.flush()
+                engine.process_result(result)
 
-    asyncio.run(_run())
+    async def _run_all() -> None:
+        tasks = [asyncio.create_task(_run_game(session)) for session in sessions]
+        if not tasks:
+            return
+        await asyncio.gather(*tasks)
+
+    asyncio.run(_run_all())
 
 
-def prompt_strategies() -> Any:
-    strategies = available_strategies()
+def prompt_games() -> List[GameConfig]:
+    games = available_games()
+    if not games:
+        raise ValueError("Nenhum jogo disponível.")
+    game_keys = sorted(games.keys())
+    available_display = ", ".join(
+        f"{key} ({games[key].label})" for key in game_keys
+    )
+    raw = input(
+        "Informe os jogos (separados por vírgula). "
+        f"Disponíveis: {available_display}. "
+        "Pressione Enter para usar o primeiro disponível: "
+    ).strip()
+    if not raw:
+        chosen = [game_keys[0]]
+    else:
+        chosen = [name.strip().lower() for name in raw.split(",") if name.strip()]
+    selected_games = []
+    missing = []
+    for name in chosen:
+        game = games.get(name)
+        if game is None:
+            missing.append(name)
+        else:
+            selected_games.append(game)
+    if missing:
+        raise ValueError(f"Jogos não encontrados: {', '.join(missing)}")
+    return selected_games
+
+
+def prompt_strategies(game: GameConfig) -> Any:
+    strategies = available_strategies(game.strategy_package)
     if not strategies:
-        raise ValueError("Nenhuma estratégia disponível na pasta strategies.")
+        raise ValueError(f"Nenhuma estratégia disponível para {game.label}.")
     unique_names = sorted({name for name in strategies.keys()})
     available_display = ", ".join(unique_names)
     raw = input(
-        "Informe as estratégias (separadas por vírgula). "
+        f"Informe as estratégias para {game.label} (separadas por vírgula). "
         f"Disponíveis: {available_display}. "
         "Pressione Enter para usar a primeira disponível: "
     ).strip()
@@ -115,7 +163,24 @@ def prompt_strategies() -> Any:
         chosen = [unique_names[0]]
     else:
         chosen = [name.strip() for name in raw.split(",") if name.strip()]
-    return build_strategy(chosen)
+    return build_strategy(chosen, game.strategy_package)
+
+
+def create_backtest_path(game_key: str) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    directory = Path(__file__).resolve().parent / "data" / "backtests"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / f"backtest_{game_key}_{timestamp}.jsonl"
+
+
+def _winrate_limits_for(strategy: Any, strategy_name: str) -> tuple[float, float]:
+    if hasattr(strategy, "strategy_name") and strategy.strategy_name() == strategy_name:
+        return strategy.winrate_limits()
+    if isinstance(strategy, MultiStrategy):
+        for item in strategy.strategies:
+            if item.strategy_name() == strategy_name:
+                return item.winrate_limits()
+    return (0.0, 100.0)
 
 
 def main() -> None:
@@ -131,12 +196,16 @@ def main() -> None:
 
     if args.backtest_file:
         history = load_history(args.backtest_file)
-        strategy = prompt_strategies()
-        run_backtest_mode(strategy, history)
+        selected_games = prompt_games()
+        sessions = [GameSession(game=game, strategy=prompt_strategies(game)) for game in selected_games]
+        if len(sessions) > 1:
+            raise ValueError("Backtest suporta apenas um jogo por vez.")
+        run_backtest_mode(sessions[0].strategy, history)
         return
 
-    strategy = prompt_strategies()
-    run_live(settings, strategy)
+    selected_games = prompt_games()
+    sessions = [GameSession(game=game, strategy=prompt_strategies(game)) for game in selected_games]
+    run_live(settings, sessions)
 
 
 if __name__ == "__main__":

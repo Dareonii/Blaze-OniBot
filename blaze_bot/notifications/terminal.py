@@ -23,20 +23,38 @@ class TerminalNotifier:
         winrate: float | None = None,
         *,
         strategy_name: str | None = None,
+        min_winrate: float | None = None,
+        max_winrate: float | None = None,
     ) -> None:
         label = "WIN ✅" if win else "LOSS ❌"
         suffix = f"({strategy_name})" if strategy_name else ""
-        print(f"[RESULT] {label}{suffix}")
+        if min_winrate is not None and max_winrate is not None and winrate is not None:
+            limits = f" | Winrate: {winrate:.2f}% (mín: {min_winrate:.2f}% | máx: {max_winrate:.2f}%)"
+        else:
+            limits = ""
+        print(f"[RESULT] {label}{suffix}{limits}")
 
-    def stats(self, winrate: float, stats: Dict[str, Any], *, strategy_name: str | None = None) -> None:
+    def stats(
+        self,
+        winrate: float,
+        stats: Dict[str, Any],
+        *,
+        strategy_name: str | None = None,
+        min_winrate: float | None = None,
+        max_winrate: float | None = None,
+    ) -> None:
         prefix = f"[{strategy_name}]" if strategy_name else "[STATS]"
+        limits = ""
+        if min_winrate is not None and max_winrate is not None and strategy_name:
+            limits = f" | Min: {min_winrate:.2f}% | Max: {max_winrate:.2f}%"
         print(
-            "{prefix} Entradas: {entries} | Wins: {wins} | Loss: {losses} | Winrate: {winrate:.2f}%".format(
+            "{prefix} Entradas: {entries} | Wins: {wins} | Loss: {losses} | Winrate: {winrate:.2f}%{limits}".format(
                 prefix=prefix,
                 entries=stats["entries"],
                 wins=stats["wins"],
                 losses=stats["losses"],
                 winrate=winrate,
+                limits=limits,
             )
         )
 
