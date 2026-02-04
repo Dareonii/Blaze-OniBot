@@ -21,10 +21,13 @@ class BlazeDoubleWebSocket:
         while True:
             try:
                 logger.info("Iniciando conexão com o WebSocket: %s", self.url)
-                async with websockets.connect(self.url, ping_interval=20, ping_timeout=20) as socket:
+                async with websockets.connect(self.url, ping_interval=None, ping_timeout=None) as socket:
                     logger.info("Conexão WebSocket estabelecida com sucesso.")
+                    await self._send_connect(socket)
                     backoff = 1
                     async for message in socket:
+                        if await self._handle_control_message(socket, message):
+                            continue
                         parsed = self._parse_message(message)
                         if parsed:
                             yield parsed
@@ -37,6 +40,36 @@ class BlazeDoubleWebSocket:
                 )
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30)
+
+    async def _send_connect(self, socket: websockets.WebSocketClientProtocol) -> None:
+        """Envia o comando de conexão do Socket.IO (Engine.IO v3)."""
+        await socket.send("40")
+
+    async def _handle_control_message(
+        self, socket: websockets.WebSocketClientProtocol, message: str
+    ) -> bool:
+        if message.startswith("0"):
+            try:
+                payload = json.loads(message[1:]) if len(message) > 1 else {}
+            except json.JSONDecodeError:
+                payload = {}
+            ping_interval = payload.get("pingInterval")
+            ping_timeout = payload.get("pingTimeout")
+            logger.info(
+                "Handshake Engine.IO recebido (pingInterval=%s, pingTimeout=%s).",
+                ping_interval,
+                ping_timeout,
+            )
+            await self._send_connect(socket)
+            return True
+        if message == "2":
+            logger.debug("Ping Engine.IO recebido, enviando pong.")
+            await socket.send("3")
+            return True
+        if message in {"3", "40"}:
+            logger.debug("Mensagem Engine.IO ignorada: %s", message)
+            return True
+        return False
 
     def _parse_message(self, message: str) -> Dict[str, Any] | None:
         if message.startswith("42"):

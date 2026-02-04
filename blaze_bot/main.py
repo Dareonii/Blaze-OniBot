@@ -68,11 +68,11 @@ def run_live(settings: Settings) -> None:
         stream = socket.listen()
         while True:
             try:
-                result = await asyncio.wait_for(stream.__anext__(), timeout=35)
+                result = await asyncio.wait_for(stream.__anext__(), timeout=60)
             except asyncio.TimeoutError:
                 for notifier in notifiers:
                     if hasattr(notifier, "warning"):
-                        notifier.warning("Nenhum novo resultado recebido após 35s.")
+                        notifier.warning("Nenhum novo resultado recebido após 60s.")
                 continue
             except StopAsyncIteration:
                 break
