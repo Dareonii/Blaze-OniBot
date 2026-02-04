@@ -41,6 +41,12 @@ class BlazeDoubleWebSocket:
     def _parse_message(self, message: str) -> Dict[str, Any] | None:
         if message.startswith("42"):
             message = message[2:]
+        elif message in {"2", "3"}:
+            logger.debug("Ping/Pong do WebSocket recebido: %s", message)
+            return None
+        elif message:
+            logger.debug("Mensagem WebSocket não processada: %s", message)
+            return None
         try:
             payload = json.loads(message)
         except json.JSONDecodeError:
@@ -59,6 +65,8 @@ class BlazeDoubleWebSocket:
             status = data.get("status")
             if isinstance(status, str) and status != self._last_status:
                 logger.info("Status do double: %s", status)
+                if status == "waiting":
+                    logger.info("Roleta aguardando próxima rodada (sem número ainda).")
                 self._last_status = status
             color = data.get("color") or data.get("colour")
             number = data.get("roll") or data.get("number")
