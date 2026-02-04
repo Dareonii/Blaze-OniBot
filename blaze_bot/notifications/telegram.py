@@ -39,10 +39,10 @@ class TelegramNotifier:
         reason = prediction.get("reason")
         label, emoji = _format_color(color)
         lines = [
-            "**⚠️ SINAL DETECTADO!**",
-            f"**🎲 Modo:** {self.game_label}",
-            f"**🤖 Estratégia:** {strategy}",
-            f"**🎯 Sinal:** {label} {emoji}".strip(),
+            "⚠️ SINAL DETECTADO!",
+            f"🎲 Modo: {self.game_label}",
+            f"🤖 Estratégia: {strategy}",
+            f"🎯 Sinal: {label} {emoji}".strip(),
         ]
         if reason:
             lines.append(f"✳️ Motivo: {reason}")
@@ -52,9 +52,9 @@ class TelegramNotifier:
         strategies_display = ", ".join(strategies) if strategies else "-"
         message = "\n".join(
             [
-                "🤖 Bot iniciado!",
-                f"🎲 Modo: {self.game_label}",
-                f"🧠 Estratégias ativas: {strategies_display}",
+                "<b>🤖 Bot iniciado!</b>",
+                f"<b>🎲 Modo:</b> {self.game_label}",
+                f"<b>🧠 Estratégias ativas:</b> {strategies_display}",
             ]
         )
         self.send_message(message)
@@ -88,8 +88,8 @@ class TelegramNotifier:
         message = "\n".join(
             [
                 status,
-                f"🎲 {self.game_label}",
-                f"🤖 {strategy_label}",
+                f"🎲 Modo: {self.game_label}",
+                f"🤖 Estratégia: {strategy_label}",
                 summary,
             ]
         )
