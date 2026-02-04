@@ -59,7 +59,7 @@ class Engine:
         prediction = self.strategy.predict(self.history)
         if prediction is None:
             return
-        strategy_name = self.strategy.__class__.__name__
+        strategy_name = self.strategy.strategy_name()
         self.last_prediction = PredictionState(prediction=prediction, strategy_name=strategy_name)
         prediction_payload = {**prediction, "strategy": strategy_name}
         for notifier in self.notifiers:
