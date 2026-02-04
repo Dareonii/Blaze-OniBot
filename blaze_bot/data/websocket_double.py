@@ -24,6 +24,7 @@ class BlazeDoubleWebSocket:
         self.token = token
         self.room = room
         self._last_status: str | None = None
+        self._last_result_signature: tuple[Any, ...] | None = None
         self._namespace = namespace
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
@@ -151,14 +152,16 @@ class BlazeDoubleWebSocket:
         if color is None or number is None:
             return None
 
-        if self._last_status == "result":
-            return None
-        self._last_status = "result"
-
         if timestamp is None:
             timestamp = datetime.utcnow().isoformat()
 
-        return {"timestamp": timestamp, "number": int(number), "color": self._normalize_color(color)}
+        normalized_color = self._normalize_color(color)
+        signature = (int(number), normalized_color, timestamp)
+        if self._last_result_signature == signature:
+            return None
+        self._last_result_signature = signature
+
+        return {"timestamp": timestamp, "number": int(number), "color": normalized_color}
 
     def _normalize_color(self, color: Any) -> str:
         if isinstance(color, str):
