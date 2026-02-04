@@ -5,7 +5,10 @@ from typing import Any, Dict, List
 from blaze_bot.strategies.base import StrategyBase
 
 
-class DummyAlternatingStrategy(StrategyBase):
+STRATEGY_NAME = "dummy"
+
+
+class Strategy(StrategyBase):
     """Alterna entre vermelho e preto ignorando o branco."""
 
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:

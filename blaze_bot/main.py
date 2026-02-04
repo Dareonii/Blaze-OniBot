@@ -17,7 +17,7 @@ from blaze_bot.core.engine import Engine
 from blaze_bot.data.websocket_double import BlazeDoubleWebSocket
 from blaze_bot.notifications.terminal import TerminalNotifier
 from blaze_bot.notifications.telegram import TelegramNotifier
-from blaze_bot.strategies.dummy import DummyAlternatingStrategy
+from blaze_bot.strategies import available_strategies, build_strategy
 
 
 def load_history(path: Path) -> List[Dict[str, Any]]:
@@ -46,8 +46,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_backtest_mode(history: Iterable[Dict[str, Any]]) -> None:
-    strategy = DummyAlternatingStrategy()
+def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
     results = run_backtest(strategy, history)
     print(
         "[BACKTEST] Entradas: {entries} | Wins: {wins} | Losses: {losses} | Winrate: {winrate:.2f}%".format(
@@ -59,9 +58,8 @@ def run_backtest_mode(history: Iterable[Dict[str, Any]]) -> None:
     )
 
 
-def run_live(settings: Settings) -> None:
+def run_live(settings: Settings, strategy: Any) -> None:
     async def _run() -> None:
-        strategy = DummyAlternatingStrategy()
         notifiers = build_notifiers(settings)
         engine = Engine(strategy=strategy, notifiers=notifiers)
         socket = BlazeDoubleWebSocket(
@@ -91,6 +89,24 @@ def run_live(settings: Settings) -> None:
     asyncio.run(_run())
 
 
+def prompt_strategies() -> Any:
+    strategies = available_strategies()
+    if not strategies:
+        raise ValueError("Nenhuma estratégia disponível na pasta strategies.")
+    unique_names = sorted({name for name in strategies.keys()})
+    available_display = ", ".join(unique_names)
+    raw = input(
+        "Informe as estratégias (separadas por vírgula). "
+        f"Disponíveis: {available_display}. "
+        "Pressione Enter para usar a primeira disponível: "
+    ).strip()
+    if not raw:
+        chosen = [unique_names[0]]
+    else:
+        chosen = [name.strip() for name in raw.split(",") if name.strip()]
+    return build_strategy(chosen)
+
+
 def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
@@ -104,10 +120,12 @@ def main() -> None:
 
     if args.backtest_file:
         history = load_history(args.backtest_file)
-        run_backtest_mode(history)
+        strategy = prompt_strategies()
+        run_backtest_mode(strategy, history)
         return
 
-    run_live(settings)
+    strategy = prompt_strategies()
+    run_live(settings, strategy)
 
 
 if __name__ == "__main__":
