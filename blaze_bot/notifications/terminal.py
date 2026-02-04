@@ -26,3 +26,6 @@ class TerminalNotifier:
                 winrate=winrate,
             )
         )
+
+    def warning(self, message: str) -> None:
+        print(f"[WARN] {message}")

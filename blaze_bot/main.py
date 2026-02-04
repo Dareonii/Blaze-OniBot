@@ -61,9 +61,20 @@ def run_backtest_mode(history: Iterable[Dict[str, Any]]) -> None:
 def run_live(settings: Settings) -> None:
     async def _run() -> None:
         strategy = DummyAlternatingStrategy()
-        engine = Engine(strategy=strategy, notifiers=build_notifiers(settings))
+        notifiers = build_notifiers(settings)
+        engine = Engine(strategy=strategy, notifiers=notifiers)
         socket = BlazeDoubleWebSocket(settings.websocket_url)
-        async for result in socket.listen():
+        stream = socket.listen()
+        while True:
+            try:
+                result = await asyncio.wait_for(stream.__anext__(), timeout=35)
+            except asyncio.TimeoutError:
+                for notifier in notifiers:
+                    if hasattr(notifier, "warning"):
+                        notifier.warning("Nenhum novo resultado recebido após 35s.")
+                continue
+            except StopAsyncIteration:
+                break
             engine.process_result(result)
 
     asyncio.run(_run())
