@@ -48,6 +48,17 @@ class TelegramNotifier:
             lines.append(f"✳️ Motivo: {reason}")
         self.send_message("\n".join(lines))
 
+    def startup(self, strategies: list[str]) -> None:
+        strategies_display = ", ".join(strategies) if strategies else "-"
+        message = "\n".join(
+            [
+                "🤖 Bot iniciado!",
+                f"🎲 Modo: {self.game_label}",
+                f"🧠 Estratégias ativas: {strategies_display}",
+            ]
+        )
+        self.send_message(message)
+
     def evaluation(
         self,
         win: bool,

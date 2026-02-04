@@ -145,13 +145,18 @@ class BlazeDoubleWebSocket:
             return None
 
         if isinstance(data, dict):
-            color = data.get("color") or data.get("colour")
-            number = data.get("roll") or data.get("number")
+            color = data.get("color") if "color" in data else data.get("colour")
+            number = data.get("roll") if "roll" in data else data.get("number")
             timestamp = data.get("created_at") or data.get("timestamp")
         else:
-            color = payload.get("color") if isinstance(payload, dict) else None
-            number = payload.get("roll") if isinstance(payload, dict) else None
-            timestamp = payload.get("created_at") if isinstance(payload, dict) else None
+            if isinstance(payload, dict):
+                color = payload.get("color") if "color" in payload else payload.get("colour")
+                number = payload.get("roll") if "roll" in payload else payload.get("number")
+                timestamp = payload.get("created_at") or payload.get("timestamp")
+            else:
+                color = None
+                number = None
+                timestamp = None
 
         if color is None or number is None:
             return None

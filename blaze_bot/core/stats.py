@@ -1,15 +1,23 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Deque
 
 
 @dataclass
 class Stats:
+    WINDOW_SIZE = 50
     total_entries: int = 0
     wins: int = 0
     losses: int = 0
     min_winrate: float | None = None
     max_winrate: float | None = None
+    _recent_winrates: Deque[float] = field(
+        default_factory=lambda: deque(maxlen=Stats.WINDOW_SIZE),
+        init=False,
+        repr=False,
+    )
 
     @property
     def winrate(self) -> float:
@@ -24,7 +32,10 @@ class Stats:
         else:
             self.losses += 1
         current_winrate = self.winrate
-        if self.min_winrate is None or current_winrate < self.min_winrate:
-            self.min_winrate = current_winrate
-        if self.max_winrate is None or current_winrate > self.max_winrate:
-            self.max_winrate = current_winrate
+        self._recent_winrates.append(current_winrate)
+        if len(self._recent_winrates) < self.WINDOW_SIZE:
+            self.min_winrate = None
+            self.max_winrate = None
+            return
+        self.min_winrate = min(self._recent_winrates)
+        self.max_winrate = max(self._recent_winrates)
