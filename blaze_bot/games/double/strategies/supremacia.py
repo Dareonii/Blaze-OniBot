@@ -15,12 +15,23 @@ class Strategy(StrategyBase):
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         colors = [item.get("color") for item in history[-20:] if item.get("color")]
         counts = Counter(colors)
+        white_count = counts.get("white", 0)
+        adjusted_counts = {
+            "red": counts.get("red", 0) + white_count,
+            "black": counts.get("black", 0) + white_count,
+        }
         dominant_color = None
-        for color, count in counts.items():
-            if count >= 14:
+        dominant_count = 0
+        for color in ("red", "black"):
+            count = adjusted_counts.get(color, 0)
+            if count >= 14 and count > dominant_count:
                 dominant_color = color
-                break
-        return {"dominant_color": dominant_color, "counts": dict(counts)}
+                dominant_count = count
+        return {
+            "dominant_color": dominant_color,
+            "counts": dict(counts),
+            "adjusted_counts": adjusted_counts,
+        }
 
     def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         if len(history) < 20:
