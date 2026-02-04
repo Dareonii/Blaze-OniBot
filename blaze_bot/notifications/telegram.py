@@ -13,7 +13,24 @@ class TelegramNotifier:
     def send_message(self, text: str) -> None:
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
         response = requests.post(url, json={"chat_id": self.chat_id, "text": text}, timeout=10)
-        response.raise_for_status()
+        if response.ok:
+            return
+
+        details = ""
+        try:
+            payload = response.json()
+            description = payload.get("description")
+            error_code = payload.get("error_code")
+            if description:
+                details = f" (error_code={error_code}, description={description})"
+        except ValueError:
+            if response.text:
+                details = f" (response={response.text})"
+
+        raise requests.HTTPError(
+            f"Telegram API request failed with status {response.status_code}{details}",
+            response=response,
+        )
 
     def prediction(self, prediction: Dict[str, Any]) -> None:
         color = prediction.get("color", "-")
