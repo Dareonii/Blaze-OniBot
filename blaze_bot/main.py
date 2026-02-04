@@ -88,6 +88,10 @@ def run_live(settings: Settings, sessions: Iterable[GameSession]) -> None:
     async def _run_game(session: GameSession) -> None:
         notifiers = build_notifiers(settings, session.game.label)
         engine = Engine(strategy=session.strategy, notifiers=notifiers)
+        strategy_names = _strategy_names(session.strategy)
+        for notifier in notifiers:
+            if hasattr(notifier, "startup"):
+                notifier.startup(strategy_names)
         backtest_path = create_backtest_path(session.game.key)
         print(f"[BACKTEST] Gravando resultados em {backtest_path}")
         socket = session.game.socket_builder(settings)
@@ -183,6 +187,14 @@ def _winrate_limits_for(strategy: Any, strategy_name: str) -> tuple[float, float
             if item.strategy_name() == strategy_name:
                 return item.winrate_limits()
     return (0.0, 100.0)
+
+
+def _strategy_names(strategy: Any) -> List[str]:
+    if isinstance(strategy, MultiStrategy):
+        return [item.strategy_name() for item in strategy.strategies]
+    if hasattr(strategy, "strategy_name"):
+        return [strategy.strategy_name()]
+    return []
 
 
 def main() -> None:
