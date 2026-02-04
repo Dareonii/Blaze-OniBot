@@ -13,7 +13,11 @@ class TelegramNotifier:
 
     def send_message(self, text: str) -> None:
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
-        response = requests.post(url, json={"chat_id": self.chat_id, "text": text}, timeout=10)
+        response = requests.post(
+            url,
+            json={"chat_id": self.chat_id, "text": text, "parse_mode": "HTML"},
+            timeout=10,
+        )
         if response.ok:
             return
 
