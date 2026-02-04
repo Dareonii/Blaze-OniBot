@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict
+from urllib.parse import urlparse
 
 import websockets
 
@@ -15,16 +16,21 @@ class BlazeDoubleWebSocket:
     def __init__(self, url: str) -> None:
         self.url = url
         self._last_status: str | None = None
+        parsed = urlparse(url)
+        self._namespace = parsed.path if parsed.path and parsed.path != "/" else ""
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
         backoff = 1
         while True:
             try:
                 logger.info("Iniciando conexão com o WebSocket: %s", self.url)
-                async with websockets.connect(self.url, ping_interval=20, ping_timeout=20) as socket:
+                async with websockets.connect(self.url, ping_interval=None, ping_timeout=None) as socket:
                     logger.info("Conexão WebSocket estabelecida com sucesso.")
+                    await self._send_connect(socket)
                     backoff = 1
                     async for message in socket:
+                        if await self._handle_control_message(socket, message):
+                            continue
                         parsed = self._parse_message(message)
                         if parsed:
                             yield parsed
@@ -38,9 +44,45 @@ class BlazeDoubleWebSocket:
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30)
 
+    async def _send_connect(self, socket: websockets.WebSocketClientProtocol) -> None:
+        """Envia o comando de conexão do Socket.IO (Engine.IO v3)."""
+        if self._namespace:
+            await socket.send(f"40{self._namespace}")
+        else:
+            await socket.send("40")
+
+    async def _handle_control_message(
+        self, socket: websockets.WebSocketClientProtocol, message: str
+    ) -> bool:
+        if message.startswith("0"):
+            try:
+                payload = json.loads(message[1:]) if len(message) > 1 else {}
+            except json.JSONDecodeError:
+                payload = {}
+            ping_interval = payload.get("pingInterval")
+            ping_timeout = payload.get("pingTimeout")
+            logger.info(
+                "Handshake Engine.IO recebido (pingInterval=%s, pingTimeout=%s).",
+                ping_interval,
+                ping_timeout,
+            )
+            await self._send_connect(socket)
+            return True
+        if message == "2":
+            logger.debug("Ping Engine.IO recebido, enviando pong.")
+            await socket.send("3")
+            return True
+        if message in {"3", "40", f"40{self._namespace}"}:
+            logger.debug("Mensagem Engine.IO ignorada: %s", message)
+            return True
+        return False
+
     def _parse_message(self, message: str) -> Dict[str, Any] | None:
         if message.startswith("42"):
             message = message[2:]
+            if message.startswith("/"):
+                _, _, payload = message.partition(",")
+                message = payload
         elif message in {"2", "3"}:
             logger.debug("Ping/Pong do WebSocket recebido: %s", message)
             return None
