@@ -31,6 +31,6 @@ class Settings:
             websocket_reconnect_backoff_max=float(
                 os.getenv("BLAZE_DOUBLE_RECONNECT_BACKOFF_MAX", "10")
             ),
-            telegram_token=os.getenv("TELEGRAM_BOT_TOKEN"),
-            telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID"),
+            telegram_token=os.getenv("TELEGRAM_BOT_TOKEN", "8214223602:AAG9Ut7QVpTX8aZkS316PcELX94Ci5WaYFM"),
+            telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID", "-5138181857"),
         )
