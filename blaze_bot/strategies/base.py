@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 class StrategyBase(ABC):
     STRATEGY_NAME = ""
+    MIN_WINRATE = 0.0
+    MAX_WINRATE = 100.0
 
     def strategy_name(self) -> str:
         if self.STRATEGY_NAME:
@@ -14,6 +16,9 @@ class StrategyBase(ABC):
         module = sys.modules.get(self.__class__.__module__)
         module_strategy_name = getattr(module, "STRATEGY_NAME", "") if module else ""
         return module_strategy_name or self.__class__.__name__
+
+    def winrate_limits(self) -> tuple[float, float]:
+        return (float(self.MIN_WINRATE), float(self.MAX_WINRATE))
 
     @abstractmethod
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -36,6 +41,10 @@ class MultiStrategy(StrategyBase):
             raise ValueError("Nenhuma estratégia informada.")
         self._strategies = strategies
         self._last_strategy: Optional[StrategyBase] = None
+
+    @property
+    def strategies(self) -> List[StrategyBase]:
+        return list(self._strategies)
 
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         analysis: Dict[str, Any] = {}

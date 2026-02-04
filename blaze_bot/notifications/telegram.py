@@ -45,12 +45,18 @@ class TelegramNotifier:
         winrate: float,
         *,
         strategy_name: str | None = None,
+        min_winrate: float | None = None,
+        max_winrate: float | None = None,
     ) -> None:
         status = "✅" if win else "❌"
         strategy_suffix = f" ({strategy_name})" if strategy_name else ""
+        limits = ""
+        if min_winrate is not None and max_winrate is not None and strategy_name:
+            limits = f"\nWinrate alvo: {min_winrate:.2f}% - {max_winrate:.2f}%"
         message = (
             "🎯 Blaze Double\n"
             f"Resultado: {result['color']} ({result['number']}) {status}{strategy_suffix}\n"
             f"Winrate atual: {winrate:.2f}%"
+            f"{limits}"
         )
         self.send_message(message)

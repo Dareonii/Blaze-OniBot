@@ -8,6 +8,9 @@ Bot modular para análise e predição do jogo Blaze Double. O foco é arquitetu
 blaze_bot/
 ├── core/
 ├── data/
+├── games/
+│   └── double/
+│       └── strategies/
 ├── strategies/
 ├── notifications/
 ├── config/
@@ -36,6 +39,10 @@ Variáveis de ambiente suportadas:
 ```
 python -m blaze_bot.main
 ```
+
+Ao iniciar, o bot perguntará quais jogos e estratégias deseja executar.
+Cada sessão em tempo real grava automaticamente um arquivo JSONL em
+`blaze_bot/data/backtests/`.
 
 ### Backtest
 
