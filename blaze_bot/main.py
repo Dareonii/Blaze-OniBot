@@ -89,8 +89,10 @@ def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
     settings = Settings.from_env()
+    debug_choice = input("Ativar logs de INFO/WARNING? (y/n): ").strip().lower()
+    debug_enabled = debug_choice in {"y", "yes", "s", "sim"}
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.INFO if debug_enabled else logging.ERROR,
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
 
