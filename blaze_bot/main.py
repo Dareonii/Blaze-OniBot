@@ -56,6 +56,17 @@ def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
             winrate=results["winrate"],
         )
     )
+    per_strategy = results.get("per_strategy", {})
+    for name, stats in per_strategy.items():
+        print(
+            "[BACKTEST:{name}] Entradas: {entries} | Wins: {wins} | Losses: {losses} | Winrate: {winrate:.2f}%".format(
+                name=name,
+                entries=stats["entries"],
+                wins=stats["wins"],
+                losses=stats["losses"],
+                winrate=stats["winrate"],
+            )
+        )
 
 
 def run_live(settings: Settings, strategy: Any) -> None:
