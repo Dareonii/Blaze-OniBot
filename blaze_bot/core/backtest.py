@@ -16,6 +16,7 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
         if prediction is not None:
             win = strategy.validate(prediction, result)
             stats.register_result(win)
+            prediction = None
         strategy.analyze(buffered_history)
         prediction = strategy.predict(buffered_history)
 

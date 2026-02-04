@@ -9,7 +9,9 @@ class TerminalNotifier:
 
     def prediction(self, prediction: Dict[str, Any]) -> None:
         color = prediction.get("color", "-")
-        print(f"[STRATEGY] Predição: {color}")
+        strategy = prediction.get("strategy")
+        suffix = f" ({strategy})" if strategy else ""
+        print(f"[STRATEGY] Predição: {color}{suffix}")
 
     def evaluation(
         self, win: bool, result: Dict[str, Any] | None = None, winrate: float | None = None
