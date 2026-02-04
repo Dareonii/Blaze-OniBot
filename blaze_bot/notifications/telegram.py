@@ -17,7 +17,9 @@ class TelegramNotifier:
 
     def prediction(self, prediction: Dict[str, Any]) -> None:
         color = prediction.get("color", "-")
-        self.send_message(f"🎯 Blaze Double\nEntrada: {color}")
+        strategy = prediction.get("strategy")
+        suffix = f" ({strategy})" if strategy else ""
+        self.send_message(f"🎯 Blaze Double\nEntrada: {color}{suffix}")
 
     def evaluation(self, win: bool, result: Dict[str, Any], winrate: float) -> None:
         status = "✅" if win else "❌"

@@ -10,6 +10,7 @@ from blaze_bot.strategies.base import StrategyBase
 @dataclass
 class PredictionState:
     prediction: Dict[str, Any]
+    strategy_name: str
 
 
 class Engine:
@@ -42,13 +43,18 @@ class Engine:
                             "losses": self.stats.losses,
                         },
                     )
+            self.last_prediction = None
 
         self.strategy.analyze(self.history)
         prediction = self.strategy.predict(self.history)
-        self.last_prediction = PredictionState(prediction=prediction)
+        if prediction is None:
+            return
+        strategy_name = self.strategy.__class__.__name__
+        self.last_prediction = PredictionState(prediction=prediction, strategy_name=strategy_name)
+        prediction_payload = {**prediction, "strategy": strategy_name}
         for notifier in self.notifiers:
             if hasattr(notifier, "prediction"):
-                notifier.prediction(prediction)
+                notifier.prediction(prediction_payload)
 
     def snapshot_stats(self) -> Dict[str, Any]:
         return {

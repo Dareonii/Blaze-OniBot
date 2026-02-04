@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class StrategyBase(ABC):
@@ -10,7 +10,7 @@ class StrategyBase(ABC):
         """Recebe histórico e retorna decisão."""
 
     @abstractmethod
-    def predict(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Retorna predição: cor/número."""
 
     @abstractmethod
