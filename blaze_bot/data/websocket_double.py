@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict
+from urllib.parse import urlparse
 
 import websockets
 
@@ -15,6 +16,8 @@ class BlazeDoubleWebSocket:
     def __init__(self, url: str) -> None:
         self.url = url
         self._last_status: str | None = None
+        parsed = urlparse(url)
+        self._namespace = parsed.path if parsed.path and parsed.path != "/" else ""
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
         backoff = 1
@@ -43,7 +46,10 @@ class BlazeDoubleWebSocket:
 
     async def _send_connect(self, socket: websockets.WebSocketClientProtocol) -> None:
         """Envia o comando de conexão do Socket.IO (Engine.IO v3)."""
-        await socket.send("40")
+        if self._namespace:
+            await socket.send(f"40{self._namespace}")
+        else:
+            await socket.send("40")
 
     async def _handle_control_message(
         self, socket: websockets.WebSocketClientProtocol, message: str
@@ -66,7 +72,7 @@ class BlazeDoubleWebSocket:
             logger.debug("Ping Engine.IO recebido, enviando pong.")
             await socket.send("3")
             return True
-        if message in {"3", "40"}:
+        if message in {"3", "40", f"40{self._namespace}"}:
             logger.debug("Mensagem Engine.IO ignorada: %s", message)
             return True
         return False
@@ -74,6 +80,9 @@ class BlazeDoubleWebSocket:
     def _parse_message(self, message: str) -> Dict[str, Any] | None:
         if message.startswith("42"):
             message = message[2:]
+            if message.startswith("/"):
+                _, _, payload = message.partition(",")
+                message = payload
         elif message in {"2", "3"}:
             logger.debug("Ping/Pong do WebSocket recebido: %s", message)
             return None
