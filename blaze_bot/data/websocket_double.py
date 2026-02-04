@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class BlazeDoubleWebSocket:
     def __init__(self, url: str) -> None:
         self.url = url
+        self._last_status: str | None = None
 
     async def listen(self) -> AsyncGenerator[Dict[str, Any], None]:
         backoff = 1
@@ -55,6 +56,10 @@ class BlazeDoubleWebSocket:
             data = data["payload"]
 
         if isinstance(data, dict):
+            status = data.get("status")
+            if isinstance(status, str) and status != self._last_status:
+                logger.info("Status do double: %s", status)
+                self._last_status = status
             color = data.get("color") or data.get("colour")
             number = data.get("roll") or data.get("number")
             timestamp = data.get("created_at") or data.get("timestamp")
@@ -64,6 +69,8 @@ class BlazeDoubleWebSocket:
             timestamp = payload.get("created_at") if isinstance(payload, dict) else None
 
         if color is None or number is None:
+            if isinstance(data, dict) and data.get("status") == "waiting":
+                logger.info("Roleta aguardando próxima rodada (sem número ainda).")
             return None
 
         if timestamp is None:
