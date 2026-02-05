@@ -38,10 +38,27 @@ class Strategy(StrategyBase):
     def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         if len(history) < 20:
             return None
+
         analysis = self.analyze(history)
-        dominant = analysis.get("dominant_color")
+
+        counts = analysis["counts"]
+        adjusted = analysis["adjusted_counts"]
+        dominant = analysis["dominant_color"]
+
+        dominant_color = max(adjusted, key=adjusted.get)
+        dominant_count = adjusted[dominant_color]
+
+        print(
+            f"[SUPREMACIA] Dominância: {dominant_color.upper()} "
+            f"({dominant_count}/20) | "
+            f"Red: {counts.get('red', 0)} | "
+            f"Black: {counts.get('black', 0)} | "
+            f"White: {counts.get('white', 0)}"
+        )
+
         if dominant is None:
             return None
+
         return {"color": dominant}
 
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
