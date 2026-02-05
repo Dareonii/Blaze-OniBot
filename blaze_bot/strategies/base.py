@@ -9,6 +9,7 @@ class StrategyBase(ABC):
     STRATEGY_NAME = ""
     MIN_WINRATE = 0.0
     MAX_WINRATE = 100.0
+    MARTINGALE = 0
 
     def strategy_name(self) -> str:
         if self.STRATEGY_NAME:
@@ -19,6 +20,9 @@ class StrategyBase(ABC):
 
     def winrate_limits(self) -> tuple[float, float]:
         return (float(self.MIN_WINRATE), float(self.MAX_WINRATE))
+
+    def martingale_limit(self) -> int:
+        return max(0, int(self.MARTINGALE))
 
     @abstractmethod
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:

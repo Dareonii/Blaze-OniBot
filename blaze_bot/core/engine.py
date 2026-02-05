@@ -12,6 +12,7 @@ class PredictionState:
     prediction: Dict[str, Any]
     strategy_name: str
     strategy: StrategyBase
+    remaining_martingale: int = 0
 
 
 class Engine:
@@ -47,9 +48,16 @@ class Engine:
                 notifier.result(result)
 
         if self.last_predictions:
+            pending_predictions: List[PredictionState] = []
+            registered_outcome = False
             for prediction_state in self.last_predictions:
                 strategy_name = prediction_state.strategy_name
                 win = prediction_state.strategy.validate(prediction_state.prediction, result)
+                if not win and prediction_state.remaining_martingale > 0:
+                    prediction_state.remaining_martingale -= 1
+                    pending_predictions.append(prediction_state)
+                    continue
+                registered_outcome = True
                 self.stats.register_result(win)
                 strategy_stats = self._stats_for_strategy(strategy_name)
                 strategy_stats.register_result(win)
@@ -83,17 +91,28 @@ class Engine:
                             min_winrate=strategy_stats.min_winrate,
                             max_winrate=strategy_stats.max_winrate,
                         )
-            for notifier in self.notifiers:
-                if hasattr(notifier, "stats"):
-                    notifier.stats(
-                        self.stats.winrate,
-                        {
-                            "entries": self.stats.total_entries,
-                            "wins": self.stats.wins,
-                            "losses": self.stats.losses,
-                        },
-                    )
-            self.last_predictions = []
+            if registered_outcome:
+                for notifier in self.notifiers:
+                    if hasattr(notifier, "stats"):
+                        notifier.stats(
+                            self.stats.winrate,
+                            {
+                                "entries": self.stats.total_entries,
+                                "wins": self.stats.wins,
+                                "losses": self.stats.losses,
+                            },
+                        )
+            self.last_predictions = pending_predictions
+            if pending_predictions:
+                for prediction_state in pending_predictions:
+                    prediction_payload = {
+                        **prediction_state.prediction,
+                        "strategy": prediction_state.strategy_name,
+                    }
+                    for notifier in self.notifiers:
+                        if hasattr(notifier, "prediction"):
+                            notifier.prediction(prediction_payload)
+                return
 
         self.strategy.analyze(self.history)
         if isinstance(self.strategy, MultiStrategy):
@@ -106,6 +125,7 @@ class Engine:
                     prediction=prediction_item,
                     strategy_name=strategy_name,
                     strategy=strategy,
+                    remaining_martingale=strategy.martingale_limit(),
                 )
                 self.last_predictions.append(prediction_state)
                 prediction_payload = {**prediction_item, "strategy": strategy_name}
@@ -124,6 +144,7 @@ class Engine:
                 prediction=prediction_item,
                 strategy_name=strategy_name,
                 strategy=self.strategy,
+                remaining_martingale=self.strategy.martingale_limit(),
             )
             self.last_predictions.append(prediction_state)
             prediction_payload = {**prediction_item, "strategy": strategy_name}

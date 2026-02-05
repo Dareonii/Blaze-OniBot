@@ -9,14 +9,20 @@ from blaze_bot.strategies.base import MultiStrategy, StrategyBase
 def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     stats = Stats()
     strategy_stats: Dict[str, Stats] = {}
-    predictions: List[tuple[StrategyBase, Dict[str, Any]]] = []
+    predictions: List[tuple[StrategyBase, Dict[str, Any], int]] = []
     buffered_history: List[Dict[str, Any]] = []
 
     for result in history:
         buffered_history.append(result)
         if predictions:
-            for prediction_strategy, prediction in predictions:
+            pending: List[tuple[StrategyBase, Dict[str, Any], int]] = []
+            for prediction_strategy, prediction, remaining_martingale in predictions:
                 win = prediction_strategy.validate(prediction, result)
+                if not win and remaining_martingale > 0:
+                    pending.append(
+                        (prediction_strategy, prediction, remaining_martingale - 1)
+                    )
+                    continue
                 stats.register_result(win)
                 strategy_name = prediction_strategy.strategy_name()
                 strategy_stat = strategy_stats.get(strategy_name)
@@ -24,14 +30,23 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                     strategy_stat = Stats()
                     strategy_stats[strategy_name] = strategy_stat
                 strategy_stat.register_result(win)
-            predictions = []
+            predictions = pending
+            if predictions:
+                continue
         strategy.analyze(buffered_history)
         if isinstance(strategy, MultiStrategy):
-            predictions = strategy.predictions_with_strategies(buffered_history)
+            predictions = [
+                (item_strategy, item_prediction, item_strategy.martingale_limit())
+                for item_strategy, item_prediction in strategy.predictions_with_strategies(
+                    buffered_history
+                )
+            ]
         else:
             prediction = strategy.predict(buffered_history)
             normalized = _normalize_predictions(prediction)
-            predictions = [(strategy, item) for item in normalized]
+            predictions = [
+                (strategy, item, strategy.martingale_limit()) for item in normalized
+            ]
 
     return {
         "entries": stats.total_entries,

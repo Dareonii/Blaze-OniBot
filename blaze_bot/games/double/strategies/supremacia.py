@@ -12,6 +12,8 @@ STRATEGY_NAME = "supremacia"
 class Strategy(StrategyBase):
     """Gera sinal quando 14+ das últimas 20 cores forem iguais."""
 
+    MARTINGALE = 1
+
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         colors = [item.get("color") for item in history[-20:] if item.get("color")]
         counts = Counter(colors)
@@ -43,4 +45,7 @@ class Strategy(StrategyBase):
         return {"color": dominant}
 
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
-        return prediction.get("color") == result.get("color")
+        result_color = result.get("color")
+        if result_color == "white":
+            return True
+        return prediction.get("color") == result_color
