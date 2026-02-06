@@ -74,24 +74,34 @@ class Engine:
                 bet_split = prediction.get("bet_split")
                 win_weight = float(prediction.get("win_weight", 1.0))
                 loss_weight = float(prediction.get("loss_weight", 1.0))
+                stats_win_weight = win_weight
+                stats_loss_weight = loss_weight
+                count_each_roll = bool(prediction.get("count_each_roll"))
                 if bet_split:
                     prediction_state.strategy.validate(prediction, result)
                     matched = self._match_bet_split(bet_split, result)
                     win = matched is not None
                     if matched:
                         win_weight = float(matched.get("weight", 1.0))
+                    stats_win_weight = 1.0
+                    stats_loss_weight = 1.0
                 else:
                     win = prediction_state.strategy.validate(prediction, result)
                 registered_outcome = True
                 strategy_stats = self._stats_for_strategy(strategy_name)
-                if not prediction_state.counted:
+                if count_each_roll or not prediction_state.counted:
                     self.stats.register_result(
-                        win, win_weight=win_weight, loss_weight=loss_weight
+                        win,
+                        win_weight=stats_win_weight,
+                        loss_weight=stats_loss_weight,
                     )
                     strategy_stats.register_result(
-                        win, win_weight=win_weight, loss_weight=loss_weight
+                        win,
+                        win_weight=stats_win_weight,
+                        loss_weight=stats_loss_weight,
                     )
-                    prediction_state.counted = True
+                    if not count_each_roll:
+                        prediction_state.counted = True
                 bank_snapshot = (
                     self.bank_manager.apply_result(
                         strategy_name,

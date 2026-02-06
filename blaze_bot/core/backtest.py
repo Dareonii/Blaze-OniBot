@@ -20,12 +20,17 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                 bet_split = prediction.get("bet_split")
                 win_weight = float(prediction.get("win_weight", 1.0))
                 loss_weight = float(prediction.get("loss_weight", 1.0))
+                stats_win_weight = win_weight
+                stats_loss_weight = loss_weight
+                count_each_roll = bool(prediction.get("count_each_roll"))
                 if bet_split:
                     prediction_strategy.validate(prediction, result)
                     matched = _match_bet_split(bet_split, result)
                     win = matched is not None
                     if matched:
                         win_weight = float(matched.get("weight", 1.0))
+                    stats_win_weight = 1.0
+                    stats_loss_weight = 1.0
                 else:
                     win = prediction_strategy.validate(prediction, result)
                 strategy_name = prediction_strategy.strategy_name()
@@ -33,14 +38,19 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                 if strategy_stat is None:
                     strategy_stat = Stats()
                     strategy_stats[strategy_name] = strategy_stat
-                if not counted:
+                if count_each_roll or not counted:
                     stats.register_result(
-                        win, win_weight=win_weight, loss_weight=loss_weight
+                        win,
+                        win_weight=stats_win_weight,
+                        loss_weight=stats_loss_weight,
                     )
                     strategy_stat.register_result(
-                        win, win_weight=win_weight, loss_weight=loss_weight
+                        win,
+                        win_weight=stats_win_weight,
+                        loss_weight=stats_loss_weight,
                     )
-                    counted = True
+                    if not count_each_roll:
+                        counted = True
                 if not win and remaining_martingale > 0:
                     pending.append(
                         (prediction_strategy, prediction, remaining_martingale - 1, counted)
