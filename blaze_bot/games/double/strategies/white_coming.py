@@ -39,7 +39,12 @@ class Strategy(StrategyBase):
         self._losses = 0
         self._stopped_at_len = None
 
-        return {"color": "white", "win_weight": 14, "loss_weight": 1}
+        return {
+            "color": "white",
+            "win_weight": 14,
+            "loss_weight": 1,
+            "count_each_roll": True,
+        }
 
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
         if result.get("color") == "white":
