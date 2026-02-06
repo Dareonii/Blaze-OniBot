@@ -26,7 +26,14 @@ class BankManager:
         else:
             self.banks = {"GERAL": float(settings.initial_bank)}
 
-    def apply_result(self, strategy_name: str, win: bool) -> Dict[str, float] | None:
+    def apply_result(
+        self,
+        strategy_name: str,
+        win: bool,
+        *,
+        payout: float = 1.0,
+        loss_multiplier: float = 1.0,
+    ) -> Dict[str, float] | None:
         if not self.settings.enabled:
             return None
         if self.settings.per_strategy:
@@ -37,7 +44,12 @@ class BankManager:
             key = next(iter(self.banks))
         current = self.banks[key]
         bet = self._bet_amount(current)
-        self.banks[key] = current + bet if win else current - bet
+        if win:
+            payout = max(0.0, float(payout))
+            self.banks[key] = current + (bet * payout)
+        else:
+            loss_multiplier = max(0.0, float(loss_multiplier))
+            self.banks[key] = current - (bet * loss_multiplier)
         return dict(self.banks)
 
     def snapshot(self) -> Dict[str, float]:

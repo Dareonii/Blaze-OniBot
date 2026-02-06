@@ -8,9 +8,9 @@ from typing import Deque
 @dataclass
 class Stats:
     WINDOW_SIZE = 50
-    total_entries: int = 0
-    wins: int = 0
-    losses: int = 0
+    total_entries: float = 0.0
+    wins: float = 0.0
+    losses: float = 0.0
     min_winrate: float | None = None
     max_winrate: float | None = None
     _recent_winrates: Deque[float] = field(
@@ -26,10 +26,10 @@ class Stats:
         return (self.wins / self.total_entries) * 100
 
     def register_result(
-        self, win: bool, *, win_weight: int = 1, loss_weight: int = 1
+        self, win: bool, *, win_weight: float = 1.0, loss_weight: float = 1.0
     ) -> None:
-        win_weight = max(1, int(win_weight))
-        loss_weight = max(1, int(loss_weight))
+        win_weight = max(0.0, float(win_weight))
+        loss_weight = max(0.0, float(loss_weight))
         if win:
             self.total_entries += win_weight
             self.wins += win_weight

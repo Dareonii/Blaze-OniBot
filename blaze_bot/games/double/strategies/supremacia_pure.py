@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from blaze_bot.strategies.base import StrategyBase
 from collections import Counter
+from typing import Any, Dict, List, Optional
+
+from blaze_bot.strategies.base import StrategyBase
+
 
 class Strategy(StrategyBase):
-    """Gera sinal quando 14+ das últimas 20 cores forem iguais."""
+    """Gera sinal quando 14+ das últimas 20 cores forem iguais (aposta simples)."""
 
     MARTINGALE = 0
 
@@ -79,17 +81,8 @@ class Strategy(StrategyBase):
         dominant_count = adjusted.get(self._active_color, 0)
         reason = f"{dominant_count}/20 COR DOMINANTE"
 
-        return {
-            "bet_split": [
-                {"color": self._active_color, "weight": 0.9},
-                {"color": "white", "weight": 0.1},
-            ],
-            "reason": reason,
-        }
+        return {"color": self._active_color, "reason": reason}
 
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
         result_color = result.get("color")
-        bet_split = prediction.get("bet_split")
-        if bet_split:
-            return any(item.get("color") == result_color for item in bet_split)
         return prediction.get("color") == result_color

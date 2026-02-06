@@ -62,9 +62,9 @@ def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
     results = run_backtest(strategy, history)
     print(
         "[BACKTEST] Entradas: {entries} | Wins: {wins} | Losses: {losses} | Winrate: {winrate:.2f}%".format(
-            entries=results["entries"],
-            wins=results["wins"],
-            losses=results["losses"],
+            entries=_format_stat(results["entries"]),
+            wins=_format_stat(results["wins"]),
+            losses=_format_stat(results["losses"]),
             winrate=results["winrate"],
         )
     )
@@ -75,9 +75,9 @@ def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
             "[BACKTEST:{name}] Entradas: {entries} | Wins: {wins} | Losses: {losses} | "
             "Winrate: {winrate:.2f}% (mín: {min_winrate:.2f}% | máx: {max_winrate:.2f}%)".format(
                 name=name,
-                entries=stats["entries"],
-                wins=stats["wins"],
-                losses=stats["losses"],
+                entries=_format_stat(stats["entries"]),
+                wins=_format_stat(stats["wins"]),
+                losses=_format_stat(stats["losses"]),
                 winrate=stats["winrate"],
                 min_winrate=min_winrate,
                 max_winrate=max_winrate,
@@ -291,6 +291,16 @@ def _strategy_names(strategy: Any) -> List[str]:
     if hasattr(strategy, "strategy_name"):
         return [strategy.strategy_name()]
     return []
+
+
+def _format_stat(value: Any) -> str:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if numeric.is_integer():
+        return str(int(numeric))
+    return f"{numeric:.2f}"
 
 
 def main() -> None:
