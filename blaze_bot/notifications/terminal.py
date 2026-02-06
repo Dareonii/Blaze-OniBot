@@ -26,8 +26,15 @@ class TerminalNotifier:
         strategy_name: str | None = None,
         min_winrate: float | None = None,
         max_winrate: float | None = None,
+        bank_snapshot: Dict[str, float] | None = None,
     ) -> None:
-        label = "WIN ✅" if win else "LOSS ❌"
+        number = "-"
+        emoji = ""
+        if result:
+            number = result.get("number", "-")
+            _, emoji = _format_color(result.get("color", "-"))
+        emoji = emoji or "-"
+        label = f"✅️ WIN ({number}-{emoji})" if win else f"❌️ LOSS ({number}-{emoji})"
         suffix = f"({strategy_name})" if strategy_name else ""
         stats_summary = ""
         if stats and winrate is not None:
@@ -44,6 +51,8 @@ class TerminalNotifier:
                 )
             )
         print(f"[RESULT] {label}{suffix}{stats_summary}")
+        if bank_snapshot:
+            print(_format_bank_lines(bank_snapshot))
 
     def stats(
         self,
@@ -81,3 +90,14 @@ def _format_color(color: Any) -> tuple[str, str]:
         "white": ("WHITE", "⚪"),
     }
     return mapping.get(normalized, (str(color).upper(), ""))
+
+
+def _format_bank_lines(bank_snapshot: Dict[str, float]) -> str:
+    lines = ["💰 BANCA(s):"]
+    for name, value in bank_snapshot.items():
+        lines.append(f" 🪙 {name}: {_format_currency(value)}")
+    return "\n".join(lines)
+
+
+def _format_currency(value: float) -> str:
+    return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")

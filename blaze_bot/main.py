@@ -14,6 +14,7 @@ if __package__ is None or __package__ == "":
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from blaze_bot.config.settings import Settings
+from blaze_bot.core.bank import BankManager, BankSettings
 from blaze_bot.core.backtest import run_backtest
 from blaze_bot.core.engine import Engine
 from blaze_bot.games import GameConfig, available_games
@@ -85,10 +86,17 @@ def run_backtest_mode(strategy: Any, history: Iterable[Dict[str, Any]]) -> None:
 
 
 def run_live(settings: Settings, sessions: Iterable[GameSession]) -> None:
+    bank_settings = prompt_bank_settings()
+
     async def _run_game(session: GameSession) -> None:
         notifiers = build_notifiers(settings, session.game.label)
-        engine = Engine(strategy=session.strategy, notifiers=notifiers)
         strategy_names = _strategy_names(session.strategy)
+        bank_manager = BankManager(bank_settings, strategy_names)
+        engine = Engine(
+            strategy=session.strategy,
+            notifiers=notifiers,
+            bank_manager=bank_manager,
+        )
         for notifier in notifiers:
             if hasattr(notifier, "startup"):
                 notifier.startup(strategy_names)
@@ -170,6 +178,94 @@ def prompt_strategies(game: GameConfig) -> Any:
     else:
         chosen = [name.strip() for name in raw.split(",") if name.strip()]
     return build_strategy(chosen, game.strategy_package)
+
+
+def prompt_bank_settings() -> BankSettings:
+    initial_bank = _prompt_initial_bank()
+    if initial_bank == 0:
+        return BankSettings(enabled=False, initial_bank=0)
+    per_strategy = _prompt_bank_scope()
+    mode, bet_value = _prompt_bet_mode()
+    return BankSettings(
+        enabled=True,
+        initial_bank=initial_bank,
+        per_strategy=per_strategy,
+        mode=mode,
+        bet_value=bet_value,
+    )
+
+
+def _prompt_initial_bank() -> int:
+    while True:
+        raw = input(
+            "Informe a banca inicial (valor inteiro, Enter para 100, 0 para desativar): "
+        ).strip()
+        if not raw:
+            return 100
+        try:
+            value = int(raw)
+        except ValueError:
+            print("Valor inválido. Informe um número inteiro.")
+            continue
+        if value < 0:
+            print("A banca deve ser um valor positivo ou 0.")
+            continue
+        return value
+
+
+def _prompt_bank_scope() -> bool:
+    while True:
+        raw = input(
+            "Calcular banca individual por estratégia? (s/n, Enter para sim): "
+        ).strip().lower()
+        if not raw:
+            return True
+        if raw in {"s", "sim", "y", "yes"}:
+            return True
+        if raw in {"n", "nao", "não", "no"}:
+            return False
+        print("Resposta inválida. Use s/n.")
+
+
+def _prompt_bet_mode() -> tuple[str, float]:
+    raw = input(
+        "Modo de aposta (aditivo/multiplicativo) ou valor (ex: 1 ou 1%): "
+    ).strip().lower()
+    if not raw:
+        return ("additive", 1.0)
+    if raw in {"aditivo", "a", "add", "additive"}:
+        mode, value = _prompt_bet_value(default="1")
+        return (mode, value)
+    if raw in {"multiplicativo", "m", "multi", "multiplicative"}:
+        mode, value = _prompt_bet_value(default="1%")
+        return (mode, value)
+    return _parse_bet_value(raw)
+
+
+def _prompt_bet_value(*, default: str) -> tuple[str, float]:
+    raw = input(
+        f"Informe o valor da aposta (Enter para {default}): "
+    ).strip().lower()
+    if not raw:
+        raw = default
+    return _parse_bet_value(raw)
+
+
+def _parse_bet_value(raw: str) -> tuple[str, float]:
+    if raw.endswith("%"):
+        value = _parse_float(raw[:-1])
+        return ("multiplicative", value / 100)
+    value = _parse_float(raw)
+    return ("additive", value)
+
+
+def _parse_float(raw: str) -> float:
+    cleaned = raw.replace(",", ".")
+    try:
+        return float(cleaned)
+    except ValueError:
+        print("Valor inválido. Usando 1.")
+        return 1.0
 
 
 def create_backtest_path(game_key: str) -> Path:
