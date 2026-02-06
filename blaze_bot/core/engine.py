@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
+from blaze_bot.core.bank import BankManager
 from blaze_bot.core.stats import Stats
 from blaze_bot.strategies.base import MultiStrategy, StrategyBase
 
@@ -13,16 +14,23 @@ class PredictionState:
     strategy_name: str
     strategy: StrategyBase
     remaining_martingale: int = 0
+    counted: bool = False
 
 
 class Engine:
-    def __init__(self, strategy: StrategyBase, notifiers: Iterable[Any]) -> None:
+    def __init__(
+        self,
+        strategy: StrategyBase,
+        notifiers: Iterable[Any],
+        bank_manager: BankManager | None = None,
+    ) -> None:
         self.strategy = strategy
         self.notifiers = list(notifiers)
         self.history: List[Dict[str, Any]] = []
         self.stats = Stats()
         self.strategy_stats: Dict[str, Stats] = {}
         self.last_predictions: List[PredictionState] = []
+        self.bank_manager = bank_manager
 
     def _stats_for_strategy(self, strategy_name: str) -> Stats:
         stats = self.strategy_stats.get(strategy_name)
@@ -53,19 +61,22 @@ class Engine:
             for prediction_state in self.last_predictions:
                 strategy_name = prediction_state.strategy_name
                 win = prediction_state.strategy.validate(prediction_state.prediction, result)
-                if not win and prediction_state.remaining_martingale > 0:
-                    prediction_state.remaining_martingale -= 1
-                    pending_predictions.append(prediction_state)
-                    continue
                 registered_outcome = True
-                win_weight = prediction_state.prediction.get("win_weight", 1)
-                loss_weight = prediction_state.prediction.get("loss_weight", 1)
-                self.stats.register_result(
-                    win, win_weight=win_weight, loss_weight=loss_weight
-                )
                 strategy_stats = self._stats_for_strategy(strategy_name)
-                strategy_stats.register_result(
-                    win, win_weight=win_weight, loss_weight=loss_weight
+                if not prediction_state.counted:
+                    win_weight = prediction_state.prediction.get("win_weight", 1)
+                    loss_weight = prediction_state.prediction.get("loss_weight", 1)
+                    self.stats.register_result(
+                        win, win_weight=win_weight, loss_weight=loss_weight
+                    )
+                    strategy_stats.register_result(
+                        win, win_weight=win_weight, loss_weight=loss_weight
+                    )
+                    prediction_state.counted = True
+                bank_snapshot = (
+                    self.bank_manager.apply_result(strategy_name, win)
+                    if self.bank_manager is not None
+                    else None
                 )
                 for notifier in self.notifiers:
                     if hasattr(notifier, "evaluation"):
@@ -83,6 +94,7 @@ class Engine:
                             strategy_name=strategy_name,
                             min_winrate=min_winrate,
                             max_winrate=max_winrate,
+                            bank_snapshot=bank_snapshot,
                         )
                 for notifier in self.notifiers:
                     if hasattr(notifier, "stats"):
@@ -97,6 +109,9 @@ class Engine:
                             min_winrate=strategy_stats.min_winrate,
                             max_winrate=strategy_stats.max_winrate,
                         )
+                if not win and prediction_state.remaining_martingale > 0:
+                    prediction_state.remaining_martingale -= 1
+                    pending_predictions.append(prediction_state)
             if registered_outcome:
                 for notifier in self.notifiers:
                     if hasattr(notifier, "stats"):

@@ -71,8 +71,16 @@ class TelegramNotifier:
         strategy_name: str | None = None,
         min_winrate: float | None = None,
         max_winrate: float | None = None,
+        bank_snapshot: Dict[str, float] | None = None,
     ) -> None:
-        status = "<b>✅️ WIN</b>" if win else "<b>❌️ LOSS</b>"
+        number = result.get("number", "-")
+        _, emoji = _format_color(result.get("color", "-"))
+        emoji = emoji or "-"
+        status = (
+            f"<b>✅️ WIN ({number}-{emoji})</b>"
+            if win
+            else f"<b>❌️ LOSS ({number}-{emoji})</b>"
+        )
         strategy_label = strategy_name or "-"
         limits = ""
         if min_winrate is not None and max_winrate is not None:
@@ -87,15 +95,15 @@ class TelegramNotifier:
                 limits=limits,
             )
         )
-        message = "\n".join(
-            [
-                status,
-                f"<b>🎲 Modo:</b> {self.game_label}",
-                f"<b>🤖 Estratégia:</b> {strategy_label}",
-                summary,
-            ]
-        )
-        self.send_message(message)
+        message_lines = [
+            status,
+            f"<b>🎲 Modo:</b> {self.game_label}",
+            f"<b>🤖 Estratégia:</b> {strategy_label}",
+            summary,
+        ]
+        if bank_snapshot:
+            message_lines.extend(_format_bank_lines(bank_snapshot))
+        self.send_message("\n".join(message_lines))
 
 
 def _format_color(color: Any) -> tuple[str, str]:
@@ -106,3 +114,15 @@ def _format_color(color: Any) -> tuple[str, str]:
         "white": ("<b>BRANCO</b>", "⚪️"),
     }
     return mapping.get(normalized, (str(color).upper(), ""))
+
+
+def _format_bank_lines(bank_snapshot: Dict[str, float]) -> list[str]:
+    lines = ["<b>💰 BANCA(s):</b>"]
+    for name, value in bank_snapshot.items():
+        formatted = _format_currency(value)
+        lines.append(f"<b> 🪙 {name}:</b> {formatted}")
+    return lines
+
+
+def _format_currency(value: float) -> str:
+    return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
