@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any, Dict, List, Optional
-
 from blaze_bot.strategies.base import StrategyBase
-
+from collections import Counter
 
 class Strategy(StrategyBase):
     """Sinaliza branco quando uma cor domina 14/20 resultados recentes."""

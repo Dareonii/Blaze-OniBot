@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any, Dict, List, Optional
-
 from blaze_bot.strategies.base import StrategyBase
-
+from collections import Counter
 
 class Strategy(StrategyBase):
     """Gera sinal quando 14+ das últimas 20 cores forem iguais."""
 
-    MARTINGALE = 1
+    MARTINGALE = 0
 
     def __init__(self) -> None:
         self._active_color: Optional[str] = None

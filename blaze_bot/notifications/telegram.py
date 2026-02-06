@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict
-
 import requests
-
 
 class TelegramNotifier:
     def __init__(self, token: str, chat_id: str, game_label: str) -> None:
@@ -43,13 +41,13 @@ class TelegramNotifier:
         reason = prediction.get("reason")
         label, emoji = _format_color(color)
         lines = [
-            "⚠️ SINAL DETECTADO!",
-            f"🎲 Modo: {self.game_label}",
-            f"🤖 Estratégia: {strategy}",
-            f"🎯 Sinal: {label} {emoji}".strip(),
+            "<b>⚠️ SINAL DETECTADO!",
+            f"<b>🎲 Modo:</b> {self.game_label}",
+            f"<b>🤖 Estratégia:</b> {strategy}",
+            f"<b>🎯 Sinal:</b> {label} {emoji}".strip(),
         ]
         if reason:
-            lines.append(f"✳️ Motivo: {reason}")
+            lines.append(f"<b>✳️ Motivo:</b> {reason}")
         self.send_message("\n".join(lines))
 
     def startup(self, strategies: list[str]) -> None:
@@ -74,7 +72,7 @@ class TelegramNotifier:
         min_winrate: float | None = None,
         max_winrate: float | None = None,
     ) -> None:
-        status = "✅️ WIN" if win else "❌️ LOSS"
+        status = "<b>✅️ WIN</b>" if win else "<b>❌️ LOSS</b>"
         strategy_label = strategy_name or "-"
         limits = ""
         if min_winrate is not None and max_winrate is not None:
@@ -92,8 +90,8 @@ class TelegramNotifier:
         message = "\n".join(
             [
                 status,
-                f"🎲 Modo: {self.game_label}",
-                f"🤖 Estratégia: {strategy_label}",
+                f"<b>🎲 Modo:</b> {self.game_label}",
+                f"<b>🤖 Estratégia:</b> {strategy_label}",
                 summary,
             ]
         )
@@ -103,8 +101,8 @@ class TelegramNotifier:
 def _format_color(color: Any) -> tuple[str, str]:
     normalized = str(color).lower()
     mapping = {
-        "red": ("VERMELHO", "🔴"),
-        "black": ("PRETO", "⚫️"),
-        "white": ("BRANCO", "⚪️"),
+        "red": ("<b>VERMELHO</b>", "🔴"),
+        "black": ("<b>PRETO</b>", "⚫️"),
+        "white": ("<b>BRANCO</b>", "⚪️"),
     }
     return mapping.get(normalized, (str(color).upper(), ""))
