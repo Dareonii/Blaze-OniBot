@@ -49,6 +49,16 @@ class Engine:
             return [prediction]
         return [item for item in prediction if item]
 
+    @staticmethod
+    def _match_bet_split(
+        bet_split: Sequence[Dict[str, Any]], result: Dict[str, Any]
+    ) -> Dict[str, Any] | None:
+        result_color = result.get("color")
+        for item in bet_split:
+            if item.get("color") == result_color:
+                return item
+        return None
+
     def process_result(self, result: Dict[str, Any]) -> None:
         self.history.append(result)
         for notifier in self.notifiers:
@@ -60,12 +70,21 @@ class Engine:
             registered_outcome = False
             for prediction_state in self.last_predictions:
                 strategy_name = prediction_state.strategy_name
-                win = prediction_state.strategy.validate(prediction_state.prediction, result)
+                prediction = prediction_state.prediction
+                bet_split = prediction.get("bet_split")
+                win_weight = float(prediction.get("win_weight", 1.0))
+                loss_weight = float(prediction.get("loss_weight", 1.0))
+                if bet_split:
+                    prediction_state.strategy.validate(prediction, result)
+                    matched = self._match_bet_split(bet_split, result)
+                    win = matched is not None
+                    if matched:
+                        win_weight = float(matched.get("weight", 1.0))
+                else:
+                    win = prediction_state.strategy.validate(prediction, result)
                 registered_outcome = True
                 strategy_stats = self._stats_for_strategy(strategy_name)
                 if not prediction_state.counted:
-                    win_weight = prediction_state.prediction.get("win_weight", 1)
-                    loss_weight = prediction_state.prediction.get("loss_weight", 1)
                     self.stats.register_result(
                         win, win_weight=win_weight, loss_weight=loss_weight
                     )
@@ -74,7 +93,12 @@ class Engine:
                     )
                     prediction_state.counted = True
                 bank_snapshot = (
-                    self.bank_manager.apply_result(strategy_name, win)
+                    self.bank_manager.apply_result(
+                        strategy_name,
+                        win,
+                        payout=win_weight,
+                        loss_multiplier=loss_weight,
+                    )
                     if self.bank_manager is not None
                     else None
                 )

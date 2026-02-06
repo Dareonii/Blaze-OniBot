@@ -36,12 +36,11 @@ class TelegramNotifier:
         )
 
     def prediction(self, prediction: Dict[str, Any]) -> None:
-        color = prediction.get("color", "-")
         strategy = prediction.get("strategy") or "-"
         reason = prediction.get("reason")
-        label, emoji = _format_color(color)
+        label, emoji = _format_prediction(prediction)
         lines = [
-            "<b>⚠️ SINAL DETECTADO!",
+            "<b>⚠️ SINAL DETECTADO!</b>",
             f"<b>🎲 Modo:</b> {self.game_label}",
             f"<b>🤖 Estratégia:</b> {strategy}",
             f"<b>🎯 Sinal:</b> {label} {emoji}".strip(),
@@ -88,9 +87,9 @@ class TelegramNotifier:
         summary = (
             "📊 Entradas: {entries} | Wins: {wins} | Losses: {losses} | "
             "Winrate: {winrate:.2f}%{limits}".format(
-                entries=stats["entries"],
-                wins=stats["wins"],
-                losses=stats["losses"],
+                entries=_format_stat(stats["entries"]),
+                wins=_format_stat(stats["wins"]),
+                losses=_format_stat(stats["losses"]),
                 winrate=winrate,
                 limits=limits,
             )
@@ -116,6 +115,25 @@ def _format_color(color: Any) -> tuple[str, str]:
     return mapping.get(normalized, (str(color).upper(), ""))
 
 
+def _format_prediction(prediction: Dict[str, Any]) -> tuple[str, str]:
+    bet_split = prediction.get("bet_split")
+    if bet_split:
+        labels = []
+        emojis = []
+        for item in bet_split:
+            label, emoji = _format_color(item.get("color", "-"))
+            percent = _format_percent(item.get("weight"))
+            if percent:
+                labels.append(f"{label} {percent}")
+            else:
+                labels.append(label)
+            if emoji:
+                emojis.append(emoji)
+        return " + ".join(labels), "".join(emojis)
+    color = prediction.get("color", "-")
+    return _format_color(color)
+
+
 def _format_bank_lines(bank_snapshot: Dict[str, float]) -> list[str]:
     lines = ["<b>💰 BANCA(s):</b>"]
     for name, value in bank_snapshot.items():
@@ -126,3 +144,25 @@ def _format_bank_lines(bank_snapshot: Dict[str, float]) -> list[str]:
 
 def _format_currency(value: float) -> str:
     return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _format_percent(weight: Any) -> str:
+    if weight is None:
+        return ""
+    try:
+        percent = float(weight) * 100
+    except (TypeError, ValueError):
+        return ""
+    if percent.is_integer():
+        return f"{int(percent)}%"
+    return f"{percent:.1f}%"
+
+
+def _format_stat(value: Any) -> str:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if numeric.is_integer():
+        return str(int(numeric))
+    return f"{numeric:.2f}"
