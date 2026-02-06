@@ -2,8 +2,6 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from blaze_bot.strategies.base import StrategyBase
 
-STRATEGY_NAME = "dummy"
-
 class Strategy(StrategyBase):
     """Alterna entre vermelho e preto ignorando o branco."""
 

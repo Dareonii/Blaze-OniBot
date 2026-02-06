@@ -23,13 +23,17 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                         (prediction_strategy, prediction, remaining_martingale - 1)
                     )
                     continue
-                stats.register_result(win)
+                win_weight = prediction.get("win_weight", 1)
+                loss_weight = prediction.get("loss_weight", 1)
+                stats.register_result(win, win_weight=win_weight, loss_weight=loss_weight)
                 strategy_name = prediction_strategy.strategy_name()
                 strategy_stat = strategy_stats.get(strategy_name)
                 if strategy_stat is None:
                     strategy_stat = Stats()
                     strategy_stats[strategy_name] = strategy_stat
-                strategy_stat.register_result(win)
+                strategy_stat.register_result(
+                    win, win_weight=win_weight, loss_weight=loss_weight
+                )
             predictions = pending
             if predictions:
                 continue

@@ -18,16 +18,15 @@ def available_strategies(strategy_package: str) -> Dict[str, Type[StrategyBase]]
             continue
         module_name = path.stem
         module = import_module(f"{strategy_package}.{module_name}")
-        strategy_name = getattr(module, "STRATEGY_NAME", module_name)
         strategy_class = getattr(module, "Strategy", None)
         if strategy_class is None or not issubclass(strategy_class, StrategyBase):
             raise ValueError(
-                f"Estratégia inválida em {module_name}: defina STRATEGY_NAME e class Strategy."
+                f"Estratégia inválida em {module_name}: defina class Strategy."
             )
-        for key in {module_name.lower(), str(strategy_name).lower()}:
-            if key in strategies and strategies[key] is not strategy_class:
-                raise ValueError(f"Nome de estratégia duplicado: {key}")
-            strategies[key] = strategy_class
+        key = module_name.lower()
+        if key in strategies and strategies[key] is not strategy_class:
+            raise ValueError(f"Nome de estratégia duplicado: {key}")
+        strategies[key] = strategy_class
     return strategies
 
 

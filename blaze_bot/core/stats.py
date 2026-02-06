@@ -25,12 +25,17 @@ class Stats:
             return 0.0
         return (self.wins / self.total_entries) * 100
 
-    def register_result(self, win: bool) -> None:
-        self.total_entries += 1
+    def register_result(
+        self, win: bool, *, win_weight: int = 1, loss_weight: int = 1
+    ) -> None:
+        win_weight = max(1, int(win_weight))
+        loss_weight = max(1, int(loss_weight))
         if win:
-            self.wins += 1
+            self.total_entries += win_weight
+            self.wins += win_weight
         else:
-            self.losses += 1
+            self.total_entries += loss_weight
+            self.losses += loss_weight
         current_winrate = self.winrate
         self._recent_winrates.append(current_winrate)
         if len(self._recent_winrates) < self.WINDOW_SIZE:

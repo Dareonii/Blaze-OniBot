@@ -58,9 +58,15 @@ class Engine:
                     pending_predictions.append(prediction_state)
                     continue
                 registered_outcome = True
-                self.stats.register_result(win)
+                win_weight = prediction_state.prediction.get("win_weight", 1)
+                loss_weight = prediction_state.prediction.get("loss_weight", 1)
+                self.stats.register_result(
+                    win, win_weight=win_weight, loss_weight=loss_weight
+                )
                 strategy_stats = self._stats_for_strategy(strategy_name)
-                strategy_stats.register_result(win)
+                strategy_stats.register_result(
+                    win, win_weight=win_weight, loss_weight=loss_weight
+                )
                 for notifier in self.notifiers:
                     if hasattr(notifier, "evaluation"):
                         min_winrate = strategy_stats.min_winrate

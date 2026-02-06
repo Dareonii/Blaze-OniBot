@@ -6,17 +6,15 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 
 class StrategyBase(ABC):
-    STRATEGY_NAME = ""
     MIN_WINRATE = 0.0
     MAX_WINRATE = 100.0
     MARTINGALE = 0
 
     def strategy_name(self) -> str:
-        if self.STRATEGY_NAME:
-            return self.STRATEGY_NAME
         module = sys.modules.get(self.__class__.__module__)
-        module_strategy_name = getattr(module, "STRATEGY_NAME", "") if module else ""
-        return module_strategy_name or self.__class__.__name__
+        if module and hasattr(module, "__name__"):
+            return module.__name__.split(".")[-1]
+        return self.__class__.__name__
 
     def winrate_limits(self) -> tuple[float, float]:
         return (float(self.MIN_WINRATE), float(self.MAX_WINRATE))
