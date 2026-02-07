@@ -21,9 +21,10 @@ class Stats:
 
     @property
     def winrate(self) -> float:
-        if self.total_entries == 0:
+        total_outcomes = self.wins + self.losses
+        if total_outcomes == 0:
             return 0.0
-        return (self.wins / self.total_entries) * 100
+        return (self.wins / total_outcomes) * 100
 
     def register_result(
         self,
