@@ -77,6 +77,7 @@ class Engine:
                 stats_win_weight = win_weight
                 stats_loss_weight = loss_weight
                 count_each_roll = bool(prediction.get("count_each_roll"))
+                entry_weight = prediction.get("entry_weight")
                 if bet_split:
                     prediction_state.strategy.validate(prediction, result)
                     matched = self._match_bet_split(bet_split, result)
@@ -94,11 +95,13 @@ class Engine:
                         win,
                         win_weight=stats_win_weight,
                         loss_weight=stats_loss_weight,
+                        entry_weight=entry_weight,
                     )
                     strategy_stats.register_result(
                         win,
                         win_weight=stats_win_weight,
                         loss_weight=stats_loss_weight,
+                        entry_weight=entry_weight,
                     )
                     if not count_each_roll:
                         prediction_state.counted = True

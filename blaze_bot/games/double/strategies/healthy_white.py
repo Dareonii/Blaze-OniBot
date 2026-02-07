@@ -43,42 +43,51 @@ class Strategy(StrategyBase):
         return {"pending_events": len(self._events)}
 
     def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        active_events = []
         for event in self._events:
             phase = self._event_phase(event)
             if phase is None:
                 continue
+            active_events.append({"event_id": event.event_id, "phase": phase})
+        if active_events:
             return {
                 "color": "white",
                 "win_weight": 14,
                 "loss_weight": 1,
+                "entry_weight": 1,
                 "count_each_roll": True,
-                "event_id": event.event_id,
-                "phase": phase,
+                "events": active_events,
             }
         return None
 
     def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
         result_color = result.get("color")
-        event_id = prediction.get("event_id")
-        phase = prediction.get("phase")
-        event = self._event_by_id(event_id)
-        if event is None:
+        events = prediction.get("events")
+        if not isinstance(events, list):
+            events = []
+        if not events:
             return result_color == "white"
 
-        if result_color == "white":
-            if phase == "phase1":
-                event.phase1_done = True
-            elif phase == "phase2":
-                event.phase2_done = True
-        else:
-            if phase == "phase1" and not event.phase1_done:
-                event.phase1_attempts += 1
-                if event.phase1_attempts >= self.MAX_ATTEMPTS:
+        for event_item in events:
+            event_id = event_item.get("event_id")
+            phase = event_item.get("phase")
+            event = self._event_by_id(event_id)
+            if event is None:
+                continue
+            if result_color == "white":
+                if phase == "phase1":
                     event.phase1_done = True
-            elif phase == "phase2" and not event.phase2_done:
-                event.phase2_attempts += 1
-                if event.phase2_attempts >= self.MAX_ATTEMPTS:
+                elif phase == "phase2":
                     event.phase2_done = True
+            else:
+                if phase == "phase1" and not event.phase1_done:
+                    event.phase1_attempts += 1
+                    if event.phase1_attempts >= self.MAX_ATTEMPTS:
+                        event.phase1_done = True
+                elif phase == "phase2" and not event.phase2_done:
+                    event.phase2_attempts += 1
+                    if event.phase2_attempts >= self.MAX_ATTEMPTS:
+                        event.phase2_done = True
         self._cleanup_events()
         return result_color == "white"
 

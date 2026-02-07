@@ -43,6 +43,7 @@ class Strategy(StrategyBase):
             "color": "white",
             "win_weight": 14,
             "loss_weight": 1,
+            "entry_weight": 1,
             "count_each_roll": True,
         }
 

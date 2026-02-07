@@ -23,6 +23,7 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                 stats_win_weight = win_weight
                 stats_loss_weight = loss_weight
                 count_each_roll = bool(prediction.get("count_each_roll"))
+                entry_weight = prediction.get("entry_weight")
                 if bet_split:
                     prediction_strategy.validate(prediction, result)
                     matched = _match_bet_split(bet_split, result)
@@ -43,11 +44,13 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                         win,
                         win_weight=stats_win_weight,
                         loss_weight=stats_loss_weight,
+                        entry_weight=entry_weight,
                     )
                     strategy_stat.register_result(
                         win,
                         win_weight=stats_win_weight,
                         loss_weight=stats_loss_weight,
+                        entry_weight=entry_weight,
                     )
                     if not count_each_roll:
                         counted = True

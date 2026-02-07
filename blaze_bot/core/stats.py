@@ -26,15 +26,23 @@ class Stats:
         return (self.wins / self.total_entries) * 100
 
     def register_result(
-        self, win: bool, *, win_weight: float = 1.0, loss_weight: float = 1.0
+        self,
+        win: bool,
+        *,
+        win_weight: float = 1.0,
+        loss_weight: float = 1.0,
+        entry_weight: float | None = None,
     ) -> None:
         win_weight = max(0.0, float(win_weight))
         loss_weight = max(0.0, float(loss_weight))
+        if entry_weight is None:
+            entry_weight = win_weight if win else loss_weight
+        entry_weight = max(0.0, float(entry_weight))
         if win:
-            self.total_entries += win_weight
+            self.total_entries += entry_weight
             self.wins += win_weight
         else:
-            self.total_entries += loss_weight
+            self.total_entries += entry_weight
             self.losses += loss_weight
         current_winrate = self.winrate
         self._recent_winrates.append(current_winrate)
