@@ -17,6 +17,7 @@ from blaze_bot.config.settings import Settings
 from blaze_bot.core.bank import BankManager, BankSettings
 from blaze_bot.core.backtest import run_backtest
 from blaze_bot.core.engine import Engine
+from blaze_bot.data.http_double import fetch_double_history
 from blaze_bot.games import GameConfig, available_games
 from blaze_bot.games.strategies import available_strategies, build_strategy
 from blaze_bot.strategies.base import MultiStrategy
@@ -97,6 +98,17 @@ def run_live(settings: Settings, sessions: Iterable[GameSession]) -> None:
             notifiers=notifiers,
             bank_manager=bank_manager,
         )
+        if settings.preload_history and settings.history_url:
+            history = fetch_double_history(
+                settings.history_url,
+                limit=settings.history_limit,
+                timeout=settings.history_timeout,
+            )
+            if history:
+                engine.seed_history(history)
+                print(
+                    f"[HISTÓRICO] Pré-carregado {len(history)} resultados do double."
+                )
         for notifier in notifiers:
             if hasattr(notifier, "startup"):
                 notifier.startup(strategy_names)

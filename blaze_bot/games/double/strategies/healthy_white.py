@@ -54,6 +54,8 @@ class Strategy(StrategyBase):
                 "color": "white",
                 "win_weight": 14,
                 "loss_weight": 1,
+                "stats_win_weight": 1,
+                "stats_loss_weight": 1,
                 "entry_weight": 1,
                 "count_each_roll": True,
                 "events": active_events,
