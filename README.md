@@ -51,3 +51,5 @@ python -m blaze_bot.main --backtest-file caminho/para/historico.jsonl
 ```
 
 O arquivo de histórico pode ser JSON (lista) ou JSONL (uma entrada por linha).
+
+Double é um jogo onde você deve escolher entre 3 cores(vermelho, preto e branco). Se você escolher a cor correta, ganhará 2x(preto ou vermelho) ou 14x(branco) o valor da aposta. Porém, se você escolher a cor errada, perde sua aposta. Você pode fazer múltiplas apostas em várias cores. As chances são ~46,67% para preto/vermelho e ~6,67% para branco. Acontece uma rodada a cada 30s.
