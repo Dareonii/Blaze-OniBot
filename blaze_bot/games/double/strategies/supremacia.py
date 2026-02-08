@@ -7,7 +7,8 @@ from collections import Counter
 class Strategy(StrategyBase):
     """Gera sinal quando 14+ das últimas 20 cores forem iguais."""
 
-    MARTINGALE = 0
+    MARTINGALE = 2
+    MARTINGALE_FACTOR = 1.1
 
     def __init__(self) -> None:
         self._active_color: Optional[str] = None

@@ -19,7 +19,8 @@ class WhiteEvent:
 class Strategy(StrategyBase):
     """Agenda duas janelas de aposta no branco após cada branco."""
 
-    MARTINGALE = 0
+    MARTINGALE = 20
+    MARTINGALE_FACTOR = 1.1
 
     PHASE1_DELAY = 16
     PHASE2_DELAY = 36
