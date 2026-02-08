@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
+
 import requests
+
+logger = logging.getLogger(__name__)
 
 class TelegramNotifier:
     def __init__(self, token: str, chat_id: str, game_label: str) -> None:
@@ -11,11 +15,16 @@ class TelegramNotifier:
 
     def send_message(self, text: str) -> None:
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
-        response = requests.post(
-            url,
-            json={"chat_id": self.chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=10,
-        )
+        try:
+            response = requests.post(
+                url,
+                json={"chat_id": self.chat_id, "text": text, "parse_mode": "HTML"},
+                timeout=10,
+            )
+        except requests.RequestException as exc:
+            logger.warning("Falha ao enviar mensagem para o Telegram: %s", exc)
+            return
+
         if response.ok:
             return
 
@@ -30,9 +39,10 @@ class TelegramNotifier:
             if response.text:
                 details = f" (response={response.text})"
 
-        raise requests.HTTPError(
-            f"Telegram API request failed with status {response.status_code}{details}",
-            response=response,
+        logger.warning(
+            "Telegram API retornou status %s%s",
+            response.status_code,
+            details,
         )
 
     def prediction(self, prediction: Dict[str, Any]) -> None:

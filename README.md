@@ -29,6 +29,10 @@ Variáveis de ambiente suportadas:
 - `BLAZE_DOUBLE_WS`: URL do WebSocket da Blaze Double.
 - `BLAZE_DOUBLE_TOKEN`: token JWT usado para autenticar no socket (quando necessário).
 - `BLAZE_DOUBLE_ROOM`: sala para inscrição no Socket.IO (padrão: `double_room_1`).
+- `BLAZE_DOUBLE_HISTORY_URL`: endpoint HTTP para recuperar histórico do Double (padrão: `https://api-gaming.blaze.bet.br/api/roulette_games/recent`).
+- `BLAZE_DOUBLE_HISTORY_LIMIT`: quantidade máxima de resultados pré-carregados (padrão: `200`).
+- `BLAZE_DOUBLE_HISTORY_TIMEOUT`: timeout (segundos) para a chamada de histórico (padrão: `10`).
+- `BLAZE_DOUBLE_PRELOAD_HISTORY`: ativa o pré-carregamento de histórico (`true`/`false`).
 - `TELEGRAM_BOT_TOKEN`: token do bot.
 - `TELEGRAM_CHAT_ID`: chat ID para envio de mensagens.
 
@@ -41,6 +45,8 @@ python -m blaze_bot.main
 ```
 
 Ao iniciar, o bot perguntará quais jogos e estratégias deseja executar.
+Se `BLAZE_DOUBLE_PRELOAD_HISTORY` estiver ativo, o bot pré-carrega o histórico
+do dia antes de abrir o WebSocket.
 Cada sessão em tempo real grava automaticamente um arquivo JSONL em
 `blaze_bot/data/backtests/`.
 

@@ -20,8 +20,8 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                 bet_split = prediction.get("bet_split")
                 win_weight = float(prediction.get("win_weight", 1.0))
                 loss_weight = float(prediction.get("loss_weight", 1.0))
-                stats_win_weight = win_weight
-                stats_loss_weight = loss_weight
+                stats_win_weight = float(prediction.get("stats_win_weight", win_weight))
+                stats_loss_weight = float(prediction.get("stats_loss_weight", loss_weight))
                 count_each_roll = bool(prediction.get("count_each_roll"))
                 entry_weight = prediction.get("entry_weight")
                 if bet_split:
@@ -29,7 +29,11 @@ def run_backtest(strategy: StrategyBase, history: Iterable[Dict[str, Any]]) -> D
                     matched = _match_bet_split(bet_split, result)
                     win = matched is not None
                     if matched:
-                        win_weight = float(matched.get("weight", 1.0))
+                        weight = float(matched.get("weight", 1.0))
+                        payout = matched.get("payout")
+                        if payout is None:
+                            payout = _default_payout_for_color(matched.get("color"))
+                        win_weight = weight * float(payout)
                     stats_win_weight = 1.0
                     stats_loss_weight = 1.0
                 else:
@@ -117,3 +121,9 @@ def _match_bet_split(
         if item.get("color") == result_color:
             return item
     return None
+
+
+def _default_payout_for_color(color: Any) -> float:
+    normalized = str(color).lower()
+    mapping = {"white": 14.0, "red": 2.0, "black": 2.0}
+    return mapping.get(normalized, 1.0)

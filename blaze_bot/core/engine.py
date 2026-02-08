@@ -60,6 +60,12 @@ class Engine:
                 return item
         return None
 
+    @staticmethod
+    def _default_payout_for_color(color: Any) -> float:
+        normalized = str(color).lower()
+        mapping = {"white": 14.0, "red": 2.0, "black": 2.0}
+        return mapping.get(normalized, 1.0)
+
     def process_result(self, result: Dict[str, Any]) -> None:
         self.history.append(result)
         for notifier in self.notifiers:
@@ -75,8 +81,8 @@ class Engine:
                 bet_split = prediction.get("bet_split")
                 win_weight = float(prediction.get("win_weight", 1.0))
                 loss_weight = float(prediction.get("loss_weight", 1.0))
-                stats_win_weight = win_weight
-                stats_loss_weight = loss_weight
+                stats_win_weight = float(prediction.get("stats_win_weight", win_weight))
+                stats_loss_weight = float(prediction.get("stats_loss_weight", loss_weight))
                 count_each_roll = bool(prediction.get("count_each_roll"))
                 entry_weight = prediction.get("entry_weight")
                 if bet_split:
@@ -84,7 +90,11 @@ class Engine:
                     matched = self._match_bet_split(bet_split, result)
                     win = matched is not None
                     if matched:
-                        win_weight = float(matched.get("weight", 1.0))
+                        weight = float(matched.get("weight", 1.0))
+                        payout = matched.get("payout")
+                        if payout is None:
+                            payout = self._default_payout_for_color(matched.get("color"))
+                        win_weight = weight * float(payout)
                     stats_win_weight = 1.0
                     stats_loss_weight = 1.0
                 else:
@@ -222,3 +232,8 @@ class Engine:
             "losses": self.stats.losses,
             "winrate": self.stats.winrate,
         }
+
+    def seed_history(self, history: Iterable[Dict[str, Any]]) -> None:
+        self.history = list(history)
+        if self.history:
+            self.strategy.analyze(self.history)
