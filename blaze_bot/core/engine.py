@@ -14,6 +14,7 @@ class PredictionState:
     strategy_name: str
     strategy: StrategyBase
     remaining_martingale: int = 0
+    martingale_step: int = 0
     counted: bool = False
 
 
@@ -111,6 +112,9 @@ class Engine:
                         win,
                         payout=win_weight,
                         loss_multiplier=loss_weight,
+                        martingale_step=prediction_state.martingale_step,
+                        martingale_factor=prediction_state.strategy.martingale_factor(),
+                        martingale_active=prediction_state.strategy.martingale_limit() > 0,
                     )
                     if self.bank_manager is not None
                     else None
@@ -148,6 +152,7 @@ class Engine:
                         )
                 if not win and prediction_state.remaining_martingale > 0:
                     prediction_state.remaining_martingale -= 1
+                    prediction_state.martingale_step += 1
                     pending_predictions.append(prediction_state)
             if registered_outcome:
                 for notifier in self.notifiers:

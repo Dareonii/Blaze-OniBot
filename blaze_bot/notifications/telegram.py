@@ -70,7 +70,7 @@ class TelegramNotifier:
         strategy_name: str | None = None,
         min_winrate: float | None = None,
         max_winrate: float | None = None,
-        bank_snapshot: Dict[str, float] | None = None,
+        bank_snapshot: Dict[str, Any] | None = None,
     ) -> None:
         number = result.get("number", "-")
         _, emoji = _format_color(result.get("color", "-"))
@@ -134,16 +134,32 @@ def _format_prediction(prediction: Dict[str, Any]) -> tuple[str, str]:
     return _format_color(color)
 
 
-def _format_bank_lines(bank_snapshot: Dict[str, float]) -> list[str]:
-    lines = ["<b>💰 BANCA(s):</b>"]
+def _format_bank_lines(bank_snapshot: Dict[str, Any]) -> list[str]:
+    lines = ["<b>💰 BANCA:</b>"]
     for name, value in bank_snapshot.items():
-        formatted = _format_currency(value)
+        base_value, martingale_value, martingale_enabled = _split_bank_values(value)
+        formatted = _format_currency(base_value)
+        if martingale_enabled:
+            formatted = f"{formatted} ({_format_currency(martingale_value)})"
         lines.append(f"<b> 🪙 {name}:</b> {formatted}")
     return lines
 
 
 def _format_currency(value: float) -> str:
     return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _split_bank_values(value: Any) -> tuple[float, float, bool]:
+    if isinstance(value, dict):
+        base = value.get("base", 0.0)
+        martingale = value.get("martingale", base)
+        enabled = bool(value.get("martingale_enabled"))
+        return float(base), float(martingale), enabled
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return 0.0, 0.0, False
+    return numeric, numeric, False
 
 
 def _format_percent(weight: Any) -> str:

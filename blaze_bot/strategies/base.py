@@ -9,6 +9,7 @@ class StrategyBase(ABC):
     MIN_WINRATE = 0.0
     MAX_WINRATE = 100.0
     MARTINGALE = 0
+    MARTINGALE_FACTOR = 1.0
 
     def strategy_name(self) -> str:
         module = sys.modules.get(self.__class__.__module__)
@@ -21,6 +22,13 @@ class StrategyBase(ABC):
 
     def martingale_limit(self) -> int:
         return max(0, int(self.MARTINGALE))
+
+    def martingale_factor(self) -> float:
+        try:
+            factor = float(self.MARTINGALE_FACTOR)
+        except (TypeError, ValueError):
+            factor = 1.0
+        return max(1.0, factor)
 
     @abstractmethod
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
