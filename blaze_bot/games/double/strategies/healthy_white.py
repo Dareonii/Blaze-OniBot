@@ -21,8 +21,8 @@ class Strategy(StrategyBase):
 
     MARTINGALE = 0
 
-    PHASE1_DELAY = 16
-    PHASE2_DELAY = 36
+    PHASE1_DELAY = 8
+    PHASE2_DELAY = 18
     MAX_ATTEMPTS = 10
 
     def __init__(self) -> None:
