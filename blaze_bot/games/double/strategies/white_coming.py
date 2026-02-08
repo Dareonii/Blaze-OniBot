@@ -8,6 +8,7 @@ class Strategy(StrategyBase):
     """Sinaliza branco quando uma cor domina 14/20 resultados recentes."""
 
     MARTINGALE = 13
+    MARTINGALE_FACTOR = 1.1
 
     def __init__(self) -> None:
         self._active = False
