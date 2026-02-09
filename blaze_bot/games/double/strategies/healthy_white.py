@@ -87,10 +87,8 @@ class Strategy(StrategyBase):
             return None
         for event, phase in active_events:
             if result_color == "white":
-                if phase == "phase1":
-                    event.phase1_done = True
-                elif phase == "phase2":
-                    event.phase2_done = True
+                event.phase1_done = True
+                event.phase2_done = True
             else:
                 if phase == "phase1" and not event.phase1_done:
                     event.phase1_attempts += 1
