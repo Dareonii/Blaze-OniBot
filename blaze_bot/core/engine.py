@@ -32,6 +32,7 @@ class Engine:
         self.strategy_stats: Dict[str, Stats] = {}
         self.last_predictions: List[PredictionState] = []
         self.bank_manager = bank_manager
+        self.martingale_carryover: Dict[str, Dict[str, int]] = {}
 
     def _stats_for_strategy(self, strategy_name: str) -> Stats:
         stats = self.strategy_stats.get(strategy_name)
@@ -99,6 +100,15 @@ class Engine:
                     stats_loss_weight = 1.0
                 else:
                     win = prediction_state.strategy.validate(prediction, result)
+                if win is None:
+                    if prediction_state.remaining_martingale > 0:
+                        self.martingale_carryover[strategy_name] = {
+                            "remaining": prediction_state.remaining_martingale,
+                            "step": prediction_state.martingale_step,
+                        }
+                    else:
+                        self.martingale_carryover.pop(strategy_name, None)
+                    continue
                 registered_outcome = True
                 strategy_stats = self._stats_for_strategy(strategy_name)
                 if count_each_roll or not prediction_state.counted:
@@ -129,6 +139,8 @@ class Engine:
                     if self.bank_manager is not None
                     else None
                 )
+                if win:
+                    self.martingale_carryover.pop(strategy_name, None)
                 for notifier in self.notifiers:
                     if hasattr(notifier, "evaluation"):
                         min_winrate = strategy_stats.min_winrate
@@ -164,6 +176,8 @@ class Engine:
                     prediction_state.remaining_martingale -= 1
                     prediction_state.martingale_step += 1
                     pending_predictions.append(prediction_state)
+                elif not win:
+                    self.martingale_carryover.pop(strategy_name, None)
             if registered_outcome:
                 for notifier in self.notifiers:
                     if hasattr(notifier, "stats"):
@@ -194,11 +208,21 @@ class Engine:
                 return
             for strategy, prediction_item in predictions:
                 strategy_name = strategy.strategy_name()
+                carryover = self.martingale_carryover.get(strategy_name)
+                remaining_martingale = (
+                    carryover["remaining"]
+                    if carryover and carryover.get("remaining", 0) > 0
+                    else strategy.martingale_limit()
+                )
+                martingale_step = (
+                    carryover["step"] if carryover and carryover.get("remaining", 0) > 0 else 0
+                )
                 prediction_state = PredictionState(
                     prediction=prediction_item,
                     strategy_name=strategy_name,
                     strategy=strategy,
-                    remaining_martingale=strategy.martingale_limit(),
+                    remaining_martingale=remaining_martingale,
+                    martingale_step=martingale_step,
                 )
                 self.last_predictions.append(prediction_state)
                 prediction_payload = {**prediction_item, "strategy": strategy_name}
@@ -213,11 +237,21 @@ class Engine:
             return
         for prediction_item in normalized_predictions:
             strategy_name = self.strategy.strategy_name()
+            carryover = self.martingale_carryover.get(strategy_name)
+            remaining_martingale = (
+                carryover["remaining"]
+                if carryover and carryover.get("remaining", 0) > 0
+                else self.strategy.martingale_limit()
+            )
+            martingale_step = (
+                carryover["step"] if carryover and carryover.get("remaining", 0) > 0 else 0
+            )
             prediction_state = PredictionState(
                 prediction=prediction_item,
                 strategy_name=strategy_name,
                 strategy=self.strategy,
-                remaining_martingale=self.strategy.martingale_limit(),
+                remaining_martingale=remaining_martingale,
+                martingale_step=martingale_step,
             )
             self.last_predictions.append(prediction_state)
             prediction_payload = {**prediction_item, "strategy": strategy_name}

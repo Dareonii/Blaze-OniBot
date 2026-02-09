@@ -41,8 +41,10 @@ class StrategyBase(ABC):
         """Retorna predição: cor/número ou lista de predições."""
 
     @abstractmethod
-    def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
-        """Retorna True (win) ou False (loss)."""
+    def validate(
+        self, prediction: Dict[str, Any], result: Dict[str, Any]
+    ) -> bool | None:
+        """Retorna True (win), False (loss) ou None (sem entrada)."""
 
 
 class MultiStrategy(StrategyBase):
@@ -93,7 +95,7 @@ class MultiStrategy(StrategyBase):
                 )
         return predictions
 
-    def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
+    def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool | None:
         if self._last_strategy is None:
             return False
         return self._last_strategy.validate(prediction, result)
