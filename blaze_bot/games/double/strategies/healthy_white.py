@@ -63,7 +63,9 @@ class Strategy(StrategyBase):
             }
         return None
 
-    def validate(self, prediction: Dict[str, Any], result: Dict[str, Any]) -> bool:
+    def validate(
+        self, prediction: Dict[str, Any], result: Dict[str, Any]
+    ) -> bool | None:
         result_color = result.get("color")
         events = prediction.get("events")
         if not isinstance(events, list):
@@ -71,12 +73,19 @@ class Strategy(StrategyBase):
         if not events:
             return result_color == "white"
 
+        active_events: List[tuple[WhiteEvent, str]] = []
         for event_item in events:
             event_id = event_item.get("event_id")
             phase = event_item.get("phase")
             event = self._event_by_id(event_id)
             if event is None:
                 continue
+            current_phase = self._event_phase(event)
+            if current_phase == phase:
+                active_events.append((event, phase))
+        if not active_events:
+            return None
+        for event, phase in active_events:
             if result_color == "white":
                 if phase == "phase1":
                     event.phase1_done = True
@@ -113,10 +122,13 @@ class Strategy(StrategyBase):
         if not event.phase1_done and event.rolls_since >= self.PHASE1_DELAY:
             if event.phase1_attempts < self.MAX_ATTEMPTS:
                 return "phase1"
-        if event.phase1_done and not event.phase2_done:
-            if event.rolls_since >= self.PHASE2_DELAY:
-                if event.phase2_attempts < self.MAX_ATTEMPTS:
-                    return "phase2"
+        if (
+            event.phase1_done
+            and not event.phase2_done
+            and event.rolls_since >= self.PHASE2_DELAY
+        ):
+            if event.phase2_attempts < self.MAX_ATTEMPTS:
+                return "phase2"
         return None
 
     def _cleanup_events(self) -> None:

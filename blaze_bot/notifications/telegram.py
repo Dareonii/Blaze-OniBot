@@ -148,10 +148,26 @@ def _format_bank_lines(bank_snapshot: Dict[str, Any]) -> list[str]:
     lines = ["<b>💰 BANCA:</b>"]
     for name, value in bank_snapshot.items():
         base_value, martingale_value, martingale_enabled = _split_bank_values(value)
+        base_min = _get_stat_value(value, "base_min")
+        base_max = _get_stat_value(value, "base_max")
+        martingale_min = _get_stat_value(value, "martingale_min")
+        martingale_max = _get_stat_value(value, "martingale_max")
+        gales = _get_int_value(value, "gales")
+        max_gale = _get_int_value(value, "max_gale")
         formatted = _format_currency(base_value)
         if martingale_enabled:
             formatted = f"{formatted} ({_format_currency(martingale_value)})"
         lines.append(f"<b> 🪙 {name}:</b> {formatted}")
+        if base_min is not None and base_max is not None:
+            lines.append(
+                f"<b> 📉/📈 {name}:</b> {_format_currency(base_min)} - {_format_currency(base_max)}"
+            )
+        if martingale_enabled and martingale_min is not None and martingale_max is not None:
+            lines.append(
+                f"<b> 🔁 {name} (MG):</b> {_format_currency(martingale_min)} - {_format_currency(martingale_max)}"
+            )
+        if gales is not None and max_gale is not None:
+            lines.append(f"<b> 🎚️ Gales {name}:</b> {gales} (máx. {max_gale})")
     return lines
 
 
@@ -192,3 +208,27 @@ def _format_stat(value: Any) -> str:
     if numeric.is_integer():
         return str(int(numeric))
     return f"{numeric:.2f}"
+
+
+def _get_stat_value(value: Any, key: str) -> float | None:
+    if not isinstance(value, dict):
+        return None
+    data = value.get(key)
+    if data is None:
+        return None
+    try:
+        return float(data)
+    except (TypeError, ValueError):
+        return None
+
+
+def _get_int_value(value: Any, key: str) -> int | None:
+    if not isinstance(value, dict):
+        return None
+    data = value.get(key)
+    if data is None:
+        return None
+    try:
+        return int(data)
+    except (TypeError, ValueError):
+        return None
