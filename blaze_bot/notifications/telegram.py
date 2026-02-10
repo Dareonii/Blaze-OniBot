@@ -19,7 +19,7 @@ class TelegramNotifier:
         try:
             response = requests.post(
                 url,
-                json={"chat_id": self.chat_id, "text": text},
+                json={"chat_id": self.chat_id, "text": text, "parse_mode": "HTML"},
                 timeout=10,
             )
         except requests.RequestException as exc:
