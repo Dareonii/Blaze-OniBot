@@ -15,6 +15,10 @@ class WhiteEvent:
     phase1_done: bool = False
     phase2_done: bool = False
 
+    def mark_completed(self) -> None:
+        self.phase1_done = True
+        self.phase2_done = True
+
 
 class Strategy(StrategyBase):
     """Agenda duas janelas de aposta no branco após cada branco."""
@@ -46,10 +50,8 @@ class Strategy(StrategyBase):
     def predict(self, history: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         active_events = []
         for event in self._events:
-            phase = self._event_phase(event)
-            if phase is None:
-                continue
-            active_events.append({"event_id": event.event_id, "phase": phase})
+            for phase in self._active_phases(event):
+                active_events.append({"event_id": event.event_id, "phase": phase})
         if active_events:
             return {
                 "color": "white",
@@ -80,28 +82,27 @@ class Strategy(StrategyBase):
             event = self._event_by_id(event_id)
             if event is None:
                 continue
-            current_phase = self._event_phase(event)
-            if current_phase == phase:
+            if phase in self._active_phases(event):
                 active_events.append((event, phase))
         if not active_events:
             return None
+        if result_color == "white":
+            for event, _phase in active_events:
+                event.mark_completed()
+            self._cleanup_events()
+            return True
+
         for event, phase in active_events:
-            if result_color == "white":
-                if phase == "phase1":
+            if phase == "phase1" and not event.phase1_done:
+                event.phase1_attempts += 1
+                if event.phase1_attempts >= self.MAX_ATTEMPTS:
                     event.phase1_done = True
-                elif phase == "phase2":
+            elif phase == "phase2" and not event.phase2_done:
+                event.phase2_attempts += 1
+                if event.phase2_attempts >= self.MAX_ATTEMPTS:
                     event.phase2_done = True
-            else:
-                if phase == "phase1" and not event.phase1_done:
-                    event.phase1_attempts += 1
-                    if event.phase1_attempts >= self.MAX_ATTEMPTS:
-                        event.phase1_done = True
-                elif phase == "phase2" and not event.phase2_done:
-                    event.phase2_attempts += 1
-                    if event.phase2_attempts >= self.MAX_ATTEMPTS:
-                        event.phase2_done = True
         self._cleanup_events()
-        return result_color == "white"
+        return False
 
     def _advance_events(self, result: Dict[str, Any]) -> None:
         for event in self._events:
@@ -118,18 +119,15 @@ class Strategy(StrategyBase):
                 return event
         return None
 
-    def _event_phase(self, event: WhiteEvent) -> Optional[str]:
+    def _active_phases(self, event: WhiteEvent) -> List[str]:
+        phases: List[str] = []
         if not event.phase1_done and event.rolls_since >= self.PHASE1_DELAY:
             if event.phase1_attempts < self.MAX_ATTEMPTS:
-                return "phase1"
-        if (
-            event.phase1_done
-            and not event.phase2_done
-            and event.rolls_since >= self.PHASE2_DELAY
-        ):
+                phases.append("phase1")
+        if not event.phase2_done and event.rolls_since >= self.PHASE2_DELAY:
             if event.phase2_attempts < self.MAX_ATTEMPTS:
-                return "phase2"
-        return None
+                phases.append("phase2")
+        return phases
 
     def _cleanup_events(self) -> None:
         self._events = [
