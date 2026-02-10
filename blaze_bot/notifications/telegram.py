@@ -7,6 +7,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+
 class TelegramNotifier:
     def __init__(self, token: str, chat_id: str, game_label: str) -> None:
         self.token = token
@@ -18,7 +19,7 @@ class TelegramNotifier:
         try:
             response = requests.post(
                 url,
-                json={"chat_id": self.chat_id, "text": text, "parse_mode": "HTML"},
+                json={"chat_id": self.chat_id, "text": text},
                 timeout=10,
             )
         except requests.RequestException as exc:
@@ -47,25 +48,22 @@ class TelegramNotifier:
 
     def prediction(self, prediction: Dict[str, Any]) -> None:
         strategy = prediction.get("strategy") or "-"
-        reason = prediction.get("reason")
         label, emoji = _format_prediction(prediction)
         lines = [
-            "<b>⚠️ SINAL DETECTADO!</b>",
-            f"<b>🎲 Modo:</b> {self.game_label}",
-            f"<b>🤖 Estratégia:</b> {strategy}",
-            f"<b>🎯 Sinal:</b> {label} {emoji}".strip(),
+            "⚠️ SINAL DETECTADO",
+            f"🎲 Modo: {self.game_label}",
+            f"🤖 Estratégia: {strategy}",
+            f"🎯 Sinal: {label} {emoji}".strip(),
         ]
-        if reason:
-            lines.append(f"<b>✳️ Motivo:</b> {reason}")
         self.send_message("\n".join(lines))
 
     def startup(self, strategies: list[str]) -> None:
         strategies_display = ", ".join(strategies) if strategies else "-"
         message = "\n".join(
             [
-                "<b>🤖 Bot iniciado!</b>",
-                f"<b>🎲 Modo:</b> {self.game_label}",
-                f"<b>🧠 Estratégias ativas:</b> {strategies_display}",
+                "🤖 Bot iniciado",
+                f"🎲 Modo: {self.game_label}",
+                f"🧠 Estratégias ativas: {strategies_display}",
             ]
         )
         self.send_message(message)
@@ -85,42 +83,34 @@ class TelegramNotifier:
         number = result.get("number", "-")
         _, emoji = _format_color(result.get("color", "-"))
         emoji = emoji or "-"
-        status = (
-            f"<b>✅️ WIN ({number}-{emoji})</b>"
-            if win
-            else f"<b>❌️ LOSS ({number}-{emoji})</b>"
-        )
+        status = f"✅️ WIN ({number}-{emoji})" if win else f"❌️ LOSS ({number}-{emoji})"
         strategy_label = strategy_name or "-"
-        limits = ""
-        if min_winrate is not None and max_winrate is not None:
-            limits = f"({min_winrate:.2f}% - {max_winrate:.2f}%)"
         summary = (
             "📊 Entradas: {entries} | Wins: {wins} | Losses: {losses} | "
-            "Winrate: {winrate:.2f}%{limits}".format(
+            "Winrate: {winrate:.2f}%".format(
                 entries=_format_stat(stats["entries"]),
                 wins=_format_stat(stats["wins"]),
                 losses=_format_stat(stats["losses"]),
                 winrate=winrate,
-                limits=limits,
             )
         )
         message_lines = [
             status,
-            f"<b>🎲 Modo:</b> {self.game_label}",
-            f"<b>🤖 Estratégia:</b> {strategy_label}",
+            f"🎲 Modo: {self.game_label}",
+            f"🤖 Estratégia: {strategy_label}",
             summary,
         ]
         if bank_snapshot:
-            message_lines.extend(_format_bank_lines(bank_snapshot))
+            message_lines.extend(_format_bank_lines(bank_snapshot, strategy_label))
         self.send_message("\n".join(message_lines))
 
 
 def _format_color(color: Any) -> tuple[str, str]:
     normalized = str(color).lower()
     mapping = {
-        "red": ("<b>VERMELHO</b>", "🔴"),
-        "black": ("<b>PRETO</b>", "⚫️"),
-        "white": ("<b>BRANCO</b>", "⚪️"),
+        "red": ("VERMELHO", "🔴"),
+        "black": ("PRETO", "⚫️"),
+        "white": ("BRANCO", "⚪️"),
     }
     return mapping.get(normalized, (str(color).upper(), ""))
 
@@ -133,10 +123,7 @@ def _format_prediction(prediction: Dict[str, Any]) -> tuple[str, str]:
         for item in bet_split:
             label, emoji = _format_color(item.get("color", "-"))
             percent = _format_percent(item.get("weight"))
-            if percent:
-                labels.append(f"{label} {percent}")
-            else:
-                labels.append(label)
+            labels.append(f"{label} {percent}".strip())
             if emoji:
                 emojis.append(emoji)
         return " + ".join(labels), "".join(emojis)
@@ -144,31 +131,43 @@ def _format_prediction(prediction: Dict[str, Any]) -> tuple[str, str]:
     return _format_color(color)
 
 
-def _format_bank_lines(bank_snapshot: Dict[str, Any]) -> list[str]:
-    lines = ["<b>💰 BANCA:</b>"]
-    for name, value in bank_snapshot.items():
-        base_value, martingale_value, martingale_enabled = _split_bank_values(value)
-        base_min = _get_stat_value(value, "base_min")
-        base_max = _get_stat_value(value, "base_max")
-        martingale_min = _get_stat_value(value, "martingale_min")
-        martingale_max = _get_stat_value(value, "martingale_max")
-        gales = _get_int_value(value, "gales")
-        max_gale = _get_int_value(value, "max_gale")
-        formatted = _format_currency(base_value)
-        if martingale_enabled:
-            formatted = f"{formatted} ({_format_currency(martingale_value)})"
-        lines.append(f"<b> 🪙 {name}:</b> {formatted}")
-        if base_min is not None and base_max is not None:
-            lines.append(
-                f"<b> 📉/📈 {name}:</b> {_format_currency(base_min)} - {_format_currency(base_max)}"
-            )
-        if martingale_enabled and martingale_min is not None and martingale_max is not None:
-            lines.append(
-                f"<b> 🔁 {name} (MG):</b> {_format_currency(martingale_min)} - {_format_currency(martingale_max)}"
-            )
-        if gales is not None and max_gale is not None:
-            lines.append(f"<b> 🎚️ Gales {name}:</b> {gales} (máx. {max_gale})")
-    return lines
+def _format_bank_lines(bank_snapshot: Dict[str, Any], strategy_name: str) -> list[str]:
+    strategy_bank = _pick_strategy_bank(bank_snapshot, strategy_name)
+    if strategy_bank is None:
+        return []
+
+    base_value, martingale_value, _enabled = _split_bank_values(strategy_bank)
+    base_min = _get_stat_value(strategy_bank, "base_min")
+    base_max = _get_stat_value(strategy_bank, "base_max")
+    martingale_min = _get_stat_value(strategy_bank, "martingale_min")
+    martingale_max = _get_stat_value(strategy_bank, "martingale_max")
+
+    base_range = _format_range(base_min, base_max)
+    mg_range = _format_range(martingale_min, martingale_max)
+
+    return [
+        f"💰 Banca: {_format_currency(base_value)}{base_range}",
+        f"📈 Martingale: {_format_currency(martingale_value)}{mg_range}",
+    ]
+
+
+def _pick_strategy_bank(
+    bank_snapshot: Dict[str, Any], strategy_name: str
+) -> Dict[str, Any] | None:
+    if not isinstance(bank_snapshot, dict) or not bank_snapshot:
+        return None
+    if strategy_name in bank_snapshot and isinstance(bank_snapshot[strategy_name], dict):
+        return bank_snapshot[strategy_name]
+    first = next(iter(bank_snapshot.values()))
+    if isinstance(first, dict):
+        return first
+    return None
+
+
+def _format_range(min_value: float | None, max_value: float | None) -> str:
+    if min_value is None or max_value is None:
+        return ""
+    return f" ({_format_currency(min_value)}-{_format_currency(max_value)})"
 
 
 def _format_currency(value: float) -> str:
@@ -218,17 +217,5 @@ def _get_stat_value(value: Any, key: str) -> float | None:
         return None
     try:
         return float(data)
-    except (TypeError, ValueError):
-        return None
-
-
-def _get_int_value(value: Any, key: str) -> int | None:
-    if not isinstance(value, dict):
-        return None
-    data = value.get(key)
-    if data is None:
-        return None
-    try:
-        return int(data)
     except (TypeError, ValueError):
         return None

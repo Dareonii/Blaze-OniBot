@@ -101,13 +101,7 @@ class Engine:
                 else:
                     win = prediction_state.strategy.validate(prediction, result)
                 if win is None:
-                    if prediction_state.remaining_martingale > 0:
-                        self.martingale_carryover[strategy_name] = {
-                            "remaining": prediction_state.remaining_martingale,
-                            "step": prediction_state.martingale_step,
-                        }
-                    else:
-                        self.martingale_carryover.pop(strategy_name, None)
+                    self.martingale_carryover.pop(strategy_name, None)
                     continue
                 registered_outcome = True
                 strategy_stats = self._stats_for_strategy(strategy_name)
