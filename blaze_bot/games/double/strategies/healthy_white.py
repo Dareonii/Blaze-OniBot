@@ -34,10 +34,12 @@ class Strategy(StrategyBase):
         self._events: List[WhiteEvent] = []
         self._last_history_len = 0
         self._next_event_id = 1
+        self._current_run_attempts = 0
 
     def analyze(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         if not history:
             self._last_history_len = 0
+            self._current_run_attempts = 0
             return {"pending_events": 0}
 
         new_results = history[self._last_history_len :]
@@ -52,6 +54,10 @@ class Strategy(StrategyBase):
         for event in self._events:
             for phase in self._active_phases(event):
                 active_events.append({"event_id": event.event_id, "phase": phase})
+        if len(active_events) > 1:
+            # Processa apenas uma janela por rodada para evitar que tentativas de
+            # janelas diferentes sejam consumidas em paralelo.
+            active_events = [active_events[0]]
         if active_events:
             return {
                 "color": "white",
@@ -63,6 +69,7 @@ class Strategy(StrategyBase):
                 "count_each_roll": True,
                 "events": active_events,
             }
+        self._current_run_attempts = 0
         return None
 
     def validate(
@@ -87,11 +94,13 @@ class Strategy(StrategyBase):
         if not active_events:
             return None
         if result_color == "white":
+            self._current_run_attempts = 0
             for event, _phase in active_events:
                 event.mark_completed()
             self._cleanup_events()
             return True
 
+        self._current_run_attempts += 1
         for event, phase in active_events:
             if phase == "phase1" and not event.phase1_done:
                 event.phase1_attempts += 1
@@ -101,6 +110,12 @@ class Strategy(StrategyBase):
                 event.phase2_attempts += 1
                 if event.phase2_attempts >= self.MAX_ATTEMPTS:
                     event.phase2_done = True
+        if self._current_run_attempts >= self.MAX_ATTEMPTS:
+            self._current_run_attempts = 0
+            for event in self._events:
+                if self._active_phases(event):
+                    event.mark_completed()
+
         self._cleanup_events()
         return False
 

@@ -82,6 +82,9 @@ na continuidade dessa mesma cor.
 Após cada branco, agenda duas “janelas” futuras de tentativa no branco: uma
 após 16 rodadas e outra após 36 rodadas. Cada janela tenta até 10 entradas e é
 desativada quando atinge o limite de tentativas ou quando o branco ocorre.
+Quando há sobreposição de janelas, a estratégia mantém no máximo 10 tentativas
+consecutivas no total antes de pausar as janelas ativas, evitando sequências
+longas de 20+ entradas emendadas.
 Serve para capturar brancos em ciclos posteriores ao último branco.
 
 ### White Gap Hedge (white_gap_hedge)
